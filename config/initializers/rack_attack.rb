@@ -72,11 +72,10 @@ class Rack::Attack
   end
 
   # ── Block IPs that hit too many 404s (scanner/enumeration detection) ─────────
-  # Tracks failed requests and blocks IPs that generate excessive 404s
-  blocklist("block_scanners") do |req|
-    Rack::Attack.cache.fetch("fail:#{req.ip}", expires_in: 10.minutes) do
-      0
-    end.to_i > 100
+  # Tracks failed requests and blocks IPs that generate excessive 404s.
+  # Uses throttle instead of blocklist to avoid cache API incompatibilities.
+  throttle("fail2ban/ip", limit: 100, period: 10.minutes) do |req|
+    req.ip if req.path.start_with?("/api/") && req.env["rack.attack.matched"]
   end
 
   # ── Throttled response ────────────────────────────────────────────────────────
