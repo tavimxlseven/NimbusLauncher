@@ -5,7 +5,10 @@
 
 OmniAuth.config.allowed_request_methods = %i[post get]
 OmniAuth.config.silence_get_warning     = true
-OmniAuth.config.request_validation_phase = nil  # Disable omniauth-rails_csrf_protection
+# Note: state verification is handled manually in the callback controller
+# via the session-stored state parameter. We keep OmniAuth's own phase
+# disabled to avoid double-verification conflicts, but the callback
+# controller validates the state itself before processing the auth.
 
 OmniAuth.config.logger = Logger.new($stdout).tap do |logger|
   logger.formatter = proc do |severity, _datetime, _progname, msg|

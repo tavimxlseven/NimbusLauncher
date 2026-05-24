@@ -56,7 +56,7 @@ module NimbusLauncher
       "default-src 'self'; " \
       "script-src 'self'; " \
       "style-src 'self' 'unsafe-inline'; " \
-      "img-src 'self' data: https://cdn.discordapp.com; " \
+      "img-src 'self' data: https://cdn.discordapp.com https://api.mineatar.io; " \
       "connect-src 'self'; " \
       "font-src 'self'; " \
       "object-src 'none'; " \

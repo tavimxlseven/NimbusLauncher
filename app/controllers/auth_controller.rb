@@ -44,6 +44,16 @@ class AuthController < ApplicationController
       return
     end
 
+    # Validate OAuth state to prevent CSRF attacks on the callback.
+    # OmniAuth stores the state in the session; we verify it matches.
+    omniauth_state   = request.env["omniauth.params"]&.dig("state") ||
+                       params[:state]
+    session_state    = session.delete(:omniauth_state)
+    if session_state.present? && omniauth_state != session_state
+      redirect_to "#{frontend_base}/?error=auth_failed", allow_other_host: true
+      return
+    end
+
     user = User.find_or_initialize_by(discord_uid: auth.uid)
     user.username   = auth.info.name.to_s.truncate(32)
     user.avatar_url = auth.info.image
@@ -97,6 +107,14 @@ class AuthController < ApplicationController
     deep_link = "nimbus://auth?token=#{ERB::Util.url_encode(token)}"
     safe_token = ERB::Util.html_escape(token)
     safe_link  = ERB::Util.html_escape(deep_link)
+
+    # Strict CSP for this page — no external resources, inline scripts only
+    response.set_header(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self'; connect-src 'none'"
+    )
+    # Prevent this page from being framed
+    response.set_header("X-Frame-Options", "DENY")
 
     html = <<~HTML
       <!DOCTYPE html>

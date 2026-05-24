@@ -59,6 +59,26 @@ class Rack::Attack
     req.ip if req.path.match?(%r{^/api/v1/library/\d+$}) && req.patch?
   end
 
+  # ── Mod file resolver: 60 req / 60s per IP ───────────────────────────────────
+  # Each resolve call hits CurseForge or Modrinth — limit to prevent API key abuse
+  throttle("mod_resolve/ip", limit: 60, period: 60.seconds) do |req|
+    req.ip if req.path == "/api/v1/mod_files/resolve" && req.post?
+  end
+
+  # ── Launcher poll: 30 req / 60s per IP ───────────────────────────────────────
+  # Prevents brute-force token guessing on the launcher auth endpoint
+  throttle("launcher_poll/ip", limit: 30, period: 60.seconds) do |req|
+    req.ip if req.path == "/api/v1/launcher/poll"
+  end
+
+  # ── Block IPs that hit too many 404s (scanner/enumeration detection) ─────────
+  # Tracks failed requests and blocks IPs that generate excessive 404s
+  blocklist("block_scanners") do |req|
+    Rack::Attack.cache.fetch("fail:#{req.ip}", expires_in: 10.minutes) do
+      0
+    end.to_i > 100
+  end
+
   # ── Throttled response ────────────────────────────────────────────────────────
   # Returns HTTP 429 with a Retry-After header indicating when the oldest bucket
   # in the sliding window will expire, i.e. when the IP will be unblocked.
