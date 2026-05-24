@@ -1045,21 +1045,8 @@ export class GameLauncher extends EventEmitter {
         failed: 0,
       }
 
-      // Performance monitoring (Requirements 14.1, 14.3)
-      const perfMetrics = {
-        totalValidationTimeMs: 0,
-        perModValidationTimes: [] as number[],
-        slowMods: [] as Array<{ name: string; timeMs: number }>,
-      }
-      const perfStartTime = Date.now()
-
       const downloaded: Array<{ cachePath: string; mod: ModSpec }> = []
-      /** Mods that failed all retries — we report them at the end so the user
-       *  knows exactly which ones are missing instead of seeing a silent
-       *  "Skipping jar" cascade later in the Minecraft log. */
       const failedMods: Array<{ name: string; source: string; error: string }> = []
-      let done = 0
-      const total = req.mods.length
 
       // Pretty label for progress messages: "Iris Shaders (Modrinth)"
       const labelOf = (m: ModSpec) => {
@@ -1067,31 +1054,17 @@ export class GameLauncher extends EventEmitter {
         const source = m.source === 'modrinth' ? 'Modrinth' : 'CurseForge'
         return `${name} (${source})`
       }
-      for (const mod of req.mods) {
+
+      // ── Parallel mod resolution + cache validation ──────────────────────────
+      // Process mods in parallel batches of 8 to avoid hammering the backend
+      // while still being much faster than sequential processing.
+      // Each mod goes through: resolve → cache check → download (if needed)
+      const CONCURRENCY = 8
+      let done = 0
+      const total = modsToProcess.length
+
+      const processMod = async (mod: ModSpec): Promise<void> => {
         const label = labelOf(mod)
-
-        // Skip downloading mods we'll disable anyway; saves bandwidth on
-        // every launch.
-        if (isProblematicMod(mod)) {
-          this.progress({
-            phase: 'mods',
-            message: `Mods: ${done + 1}/${total} (${cacheStats.cached} cached) — Pulando ${label} (mod problemático)`,
-            percent: 60 + (done / total) * 30,
-            detail: { cacheStats: cacheStats }
-          })
-          done++
-          continue
-        }
-
-        // Show what we're about to download BEFORE the network call so the
-        // user sees the current mod even when a download stalls.
-        this.progress({
-          phase: 'mods',
-          message: `Mods: ${done + 1}/${total} (${cacheStats.cached} cached) — ${label}`,
-          percent: 60 + (done / total) * 30,
-          detail: { cacheStats: cacheStats }
-        })
-
         try {
           const resolved = await resolveMod({
             backendUrl:   req.backendUrl,
@@ -1100,117 +1073,53 @@ export class GameLauncher extends EventEmitter {
             externalId:   mod.externalId,
             versionId:    mod.versionId,
           })
+
           if (!resolved.downloadUrl) {
             failedMods.push({ name: mod.name ?? mod.externalId, source: mod.source, error: 'sem URL de download' })
-            // Increment failed counter when no download URL is available
             cacheStats.failed++
-            this.progress({
-              phase: 'mods',
-              message: `Mods: ${done + 1}/${total} (${cacheStats.cached} cached) — Pulando ${label} (sem URL)`,
-              percent: 60 + (done / total) * 30,
-              detail: { cacheStats: cacheStats }
-            })
-            done++
-            continue
+            return
           }
 
-          // Use sha-based cache so duplicate mods across instances don't re-download.
           const cachePath = resolved.sha1 != null
             ? this.instances.cachedModPath(resolved.sha1)
             : path.join(this.instances.modsCacheDir, '_nohash', resolved.filename)
 
-          // Performance monitoring: Start timing cache validation
-          const validationStartTime = Date.now()
-
-          // If we have a cached file but it's corrupted or sha-mismatched,
-          // wipe it before re-downloading.
+          // Fast cache check: size first (cheap), then SHA1 only if needed
           let needsDownload = !fs.existsSync(cachePath)
-          if (!needsDownload) {
-            // Validate file size first (cheap check - Requirement 15.8: SHA1 + file size validation)
-            if (resolved.fileSize != null) {
-              try {
-                const stats = fs.statSync(cachePath)
-                if (stats.size !== resolved.fileSize) {
-                  this.emit('stderr', `[cache] File size mismatch for ${cachePath}: expected ${resolved.fileSize}, got ${stats.size}\n`)
-                  needsDownload = true
-                }
-              } catch (err) {
-                // File stat failed - mark as cache miss and re-download
-                this.emit('stderr', `[cache] File stat failed for ${cachePath}: ${err instanceof Error ? err.message : String(err)}\n`)
-                needsDownload = true
-              }
-            }
-            
-            // Validate SHA1 hash (Requirement 11.1: handle SHA1 calculation failures)
-            // Only if file size check passed (Requirement 15.8: reduce collision risk)
-            if (!needsDownload && resolved.sha1) {
-              try {
-                const actualSha1 = await fileSha1(cachePath)
-                if (actualSha1 !== resolved.sha1.toLowerCase()) {
-                  needsDownload = true
-                }
-              } catch (err) {
-                // SHA1 calculation failed - mark as cache miss and re-download (Requirement 11.1)
-                this.emit('stderr', `[cache] SHA1 calculation failed for ${cachePath}: ${err instanceof Error ? err.message : String(err)}\n`)
-                needsDownload = true
-              }
-            }
-            
-            // Validate JAR structure (Requirement 11.2: handle JAR validation failures)
-            if (!needsDownload && cachePath.toLowerCase().endsWith('.jar')) {
-              const v = await validateJarFile(cachePath)
-              if (!v.ok) {
-                // JAR validation failed - delete corrupted file and re-download (Requirement 11.2)
-                this.emit('stderr', `[cache] JAR validation failed for ${cachePath}: ${v.reason}\n`)
-                // Try to salvage repairable cache hits (STORED+descriptor)
-                // before forcing a network round-trip.
-                if (v.repairable && await repairJarFile(cachePath, cachePath)) {
-                  const v2 = await validateJarFile(cachePath)
-                  if (!v2.ok) {
-                    try { fs.unlinkSync(cachePath) } catch { /* ignore */ }
-                    needsDownload = true
-                  }
-                } else {
-                  try { fs.unlinkSync(cachePath) } catch { /* ignore */ }
-                  needsDownload = true
-                }
-              }
-            }
+
+          if (!needsDownload && resolved.fileSize != null) {
+            try {
+              const stat = fs.statSync(cachePath)
+              if (stat.size !== resolved.fileSize) needsDownload = true
+            } catch { needsDownload = true }
           }
 
-          // Performance monitoring: Record validation time
-          const validationTimeMs = Date.now() - validationStartTime
-          perfMetrics.perModValidationTimes.push(validationTimeMs)
-          perfMetrics.totalValidationTimeMs += validationTimeMs
+          // SHA1 check only when no fileSize available (slower path)
+          if (!needsDownload && resolved.sha1 && resolved.fileSize == null) {
+            try {
+              const actualSha1 = await fileSha1(cachePath)
+              if (actualSha1 !== resolved.sha1.toLowerCase()) needsDownload = true
+            } catch { needsDownload = true }
+          }
 
-          // Track slow mods (>50ms validation time - Requirement 14.1)
-          if (validationTimeMs > 50) {
-            perfMetrics.slowMods.push({ name: label, timeMs: validationTimeMs })
-            this.emit('stderr', `[perf] Slow cache validation for ${label}: ${validationTimeMs}ms\n`)
+          // JAR structure check only on cache hits without sha1 (can't verify otherwise)
+          if (!needsDownload && !resolved.sha1 && cachePath.toLowerCase().endsWith('.jar')) {
+            const v = await validateJarFile(cachePath)
+            if (!v.ok) {
+              if (v.repairable && await repairJarFile(cachePath, cachePath)) {
+                const v2 = await validateJarFile(cachePath)
+                if (!v2.ok) { try { fs.unlinkSync(cachePath) } catch { /* ignore */ }; needsDownload = true }
+              } else {
+                try { fs.unlinkSync(cachePath) } catch { /* ignore */ }
+                needsDownload = true
+              }
+            }
           }
 
           if (needsDownload) {
-            // Cache miss - need to download
-            await downloadToFileWithRetry(
-              resolved.downloadUrl,
-              cachePath,
-              resolved.sha1,
-              (attempt, prevErr) => {
-                if (attempt > 1) {
-                  const reason = prevErr?.message ?? 'erro desconhecido'
-                  this.progress({
-                    phase: 'mods',
-                    message: `Mods: ${done + 1}/${total} (${cacheStats.cached} cached) — ${label} (tentativa ${attempt}/3: ${reason})`,
-                    percent: 60 + (done / total) * 30,
-                    detail: { cacheStats: cacheStats }
-                  })
-                }
-              },
-            )
-            // Increment downloaded counter on successful download
+            await downloadToFileWithRetry(resolved.downloadUrl, cachePath, resolved.sha1)
             cacheStats.downloaded++
           } else {
-            // Cache hit - all validations passed
             cacheStats.cached++
           }
 
@@ -1218,115 +1127,34 @@ export class GameLauncher extends EventEmitter {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
           failedMods.push({ name: mod.name ?? mod.externalId, source: mod.source, error: msg })
-          // Increment failed counter on download failure
           cacheStats.failed++
           this.emit('stderr', `[mods] falhou ${label}: ${msg}\n`)
+        } finally {
+          done++
           this.progress({
             phase: 'mods',
-            message: `Mods: ${done + 1}/${total} (${cacheStats.cached} cached) — Falhou ${label}: ${msg}`,
+            message: `Mods: ${done}/${total} (${cacheStats.cached} cached, ${cacheStats.downloaded} baixados)`,
             percent: 60 + (done / total) * 30,
-            detail: { cacheStats: cacheStats }
+            detail: { downloaded: downloaded.length, failed: failedMods.length, cacheStats },
           })
         }
-        done++
-        this.progress({
-          phase: 'mods',
-          message: `Mods: ${done}/${total} (${cacheStats.cached} cached)`,
-          percent: 60 + (done / total) * 30,
-          detail: { 
-            downloaded: downloaded.length, 
-            failed: failedMods.length,
-            cacheStats: cacheStats
-          },
-        })
       }
 
-      // Log performance metrics (Requirement 14.3)
-      const totalTimeMs = Date.now() - perfStartTime
-      const avgValidationTimeMs = perfMetrics.perModValidationTimes.length > 0
-        ? perfMetrics.totalValidationTimeMs / perfMetrics.perModValidationTimes.length
-        : 0
-      
-      this.emit('stderr', `[perf] Cache validation complete: ${totalTimeMs}ms total, ${avgValidationTimeMs.toFixed(1)}ms avg per mod\n`)
-      
-      if (perfMetrics.slowMods.length > 0) {
-        this.emit('stderr', `[perf] ${perfMetrics.slowMods.length} slow mods (>50ms):\n`)
-        for (const slow of perfMetrics.slowMods.slice(0, 10)) {
-          this.emit('stderr', `[perf]   - ${slow.name}: ${slow.timeMs}ms\n`)
-        }
+      // Run in parallel batches
+      for (let i = 0; i < modsToProcess.length; i += CONCURRENCY) {
+        const batch = modsToProcess.slice(i, i + CONCURRENCY)
+        await Promise.all(batch.map(processMod))
       }
 
-      // Verify performance requirements (Requirement 14.1, 14.3)
-      if (total >= 500 && totalTimeMs > 25000) {
-        this.emit('stderr', `[perf] WARNING: Validation took ${totalTimeMs}ms for ${total} mods (target: <25s for 500+ mods)\n`)
-      }
-      if (avgValidationTimeMs > 50) {
-        this.emit('stderr', `[perf] WARNING: Average validation time ${avgValidationTimeMs.toFixed(1)}ms exceeds target of 50ms per mod\n`)
-      }
-
-      // Summary: surface failures so the user doesn't have to scroll through
-      // hundreds of lines of "Skipping jar" warnings in the Minecraft log to
-      // figure out what's missing.
+      // Summary
       if (failedMods.length > 0) {
         const preview = failedMods.slice(0, 5).map(f => `${f.name} (${f.error})`).join('; ')
         const more = failedMods.length > 5 ? ` e +${failedMods.length - 5}` : ''
-        let summary = `${failedMods.length} mod(s) falharam: ${preview}${more}`
-        
-        // Suggest network check if >10% of mods failed (Requirement 11.5)
-        const failureRate = cacheStats.total > 0 ? (failedMods.length / cacheStats.total) : 0
-        if (failureRate > 0.10) {
-          summary += '. Verifique sua conexão de rede'
-          this.emit('stderr', `[mods] Alta taxa de falhas (${(failureRate * 100).toFixed(1)}%) — verifique sua conexão de rede\n`)
-        }
-        
+        const summary = `${failedMods.length} mod(s) falharam: ${preview}${more}`
         this.emit('stderr', `[mods] ${summary}\n`)
-        for (const f of failedMods) {
-          this.emit('stderr', `[mods]   - ${f.name} [${f.source}]: ${f.error}\n`)
-        }
-        this.progress({
-          phase: 'mods',
-          message: `Mods: ${total}/${total} (${cacheStats.cached} cached) — Aviso: ${summary}`,
-          percent: 90,
-          detail: { failedMods, cacheStats: cacheStats },
-        })
+        this.progress({ phase: 'mods', message: `Aviso: ${summary}`, percent: 90, detail: { failedMods, cacheStats } })
       } else {
-        this.progress({
-          phase: 'mods',
-          message: `Mods: ${total}/${total} (${cacheStats.cached} cached) — todos baixados`,
-          percent: 90,
-          detail: { cacheStats: cacheStats }
-        })
-      }
-
-      // Performance monitoring: Log final metrics (Requirements 14.1, 14.3)
-      const totalElapsedMs = Date.now() - perfStartTime
-      const avgValidationMs = perfMetrics.perModValidationTimes.length > 0
-        ? perfMetrics.totalValidationTimeMs / perfMetrics.perModValidationTimes.length
-        : 0
-
-      this.emit('stderr', `[perf] Cache validation performance:\n`)
-      this.emit('stderr', `[perf]   Total mods processed: ${perfMetrics.perModValidationTimes.length}\n`)
-      this.emit('stderr', `[perf]   Total validation time: ${perfMetrics.totalValidationTimeMs}ms\n`)
-      this.emit('stderr', `[perf]   Average validation time per mod: ${avgValidationMs.toFixed(2)}ms\n`)
-      this.emit('stderr', `[perf]   Total elapsed time (including downloads): ${totalElapsedMs}ms\n`)
-      
-      if (perfMetrics.slowMods.length > 0) {
-        this.emit('stderr', `[perf]   Slow mods (>50ms): ${perfMetrics.slowMods.length}\n`)
-        for (const slow of perfMetrics.slowMods.slice(0, 10)) {
-          this.emit('stderr', `[perf]     - ${slow.name}: ${slow.timeMs}ms\n`)
-        }
-        if (perfMetrics.slowMods.length > 10) {
-          this.emit('stderr', `[perf]     ... and ${perfMetrics.slowMods.length - 10} more\n`)
-        }
-      }
-
-      // Warn if performance targets are not met (Requirements 14.1, 14.3)
-      if (avgValidationMs > 50) {
-        this.emit('stderr', `[perf] WARNING: Average validation time (${avgValidationMs.toFixed(2)}ms) exceeds target of 50ms per mod\n`)
-      }
-      
-      if (perfMetrics.perModValidationTimes.length >= 500 && perfMetrics.totalValidationTimeMs > 25000) {
-        this.emit('stderr', `[perf] WARNING: Total validation time for ${perfMetrics.perModValidationTimes.length} mods (${perfMetrics.totalValidationTimeMs}ms) exceeds target of 25 seconds\n`)
+        this.progress({ phase: 'mods', message: `Mods: ${total}/${total} — todos prontos (${cacheStats.cached} cached, ${cacheStats.downloaded} baixados)`, percent: 90, detail: { cacheStats } })
       }
 
       // Place each downloaded jar in the right folder based on what's
@@ -1339,13 +1167,30 @@ export class GameLauncher extends EventEmitter {
       const resourcepacksTarget = this.instances.resourcepacksDir(req.modpackId)
       const shaderpacksTarget   = this.instances.shaderpacksDir(req.modpackId)
 
-      // Clear stale files in each target dir before placing new ones. Mods
-      // are .jar, packs may be .jar or .zip depending on what was placed
-      // there in earlier launches — sweep both extensions.
+      // ── Preserve manually-added mods ────────────────────────────────────────
+      // Before wiping the mods folder, snapshot any JARs that were placed
+      // there manually (i.e. NOT generated by a previous launcher run).
+      // Launcher-managed files always follow the pattern:
+      //   <modname>-<sha1hex>.jar  (contains a hex segment at the end)
+      // Any file that doesn't match is treated as user-added and preserved.
+      const LAUNCHER_FILE_RE = /^.+-[0-9a-f]{8,40}(\.(jar|zip))(\.disabled)?$/i
+      const externalMods: Array<{ name: string; data: Buffer }> = []
+      try {
+        for (const f of fs.readdirSync(modsTarget)) {
+          if (!LAUNCHER_FILE_RE.test(f) && (f.endsWith('.jar') || f.endsWith('.zip'))) {
+            try {
+              externalMods.push({ name: f, data: fs.readFileSync(path.join(modsTarget, f)) })
+              this.emit('stderr', `[mods] preservando mod externo: ${f}\n`)
+            } catch { /* ignore */ }
+          }
+        }
+      } catch { /* dir may not exist yet */ }
+
+      // Clear stale launcher-managed files only (keep user files)
       const wipeArchives = (dir: string, exts: string[]) => {
         try {
           for (const f of fs.readdirSync(dir)) {
-            if (exts.some(e => f.endsWith(e))) {
+            if (exts.some(e => f.endsWith(e)) && LAUNCHER_FILE_RE.test(f)) {
               try { fs.unlinkSync(path.join(dir, f)) } catch { /* ignore */ }
             }
           }
@@ -1362,9 +1207,6 @@ export class GameLauncher extends EventEmitter {
       for (const { cachePath, mod } of downloaded) {
         const kind = await detectJarKind(cachePath)
         let target: string
-        // Resourcepacks/shaderpacks/datapacks are ZIP archives by convention
-        // (Iris and the vanilla resource loader both prefer .zip — some
-        // shader mods even refuse .jar in shaderpacks/). Mods stay as .jar.
         let extension: string
         switch (kind) {
           case 'resourcepack':
@@ -1376,8 +1218,6 @@ export class GameLauncher extends EventEmitter {
           default:
             target = modsTarget;          extension = '.jar'
         }
-        // Use the mod's display name when possible (more legible than the
-        // SHA blob the cache uses as filename).
         const baseName = mod.name
           ? mod.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80)
           : path.basename(cachePath, '.jar')
@@ -1394,11 +1234,17 @@ export class GameLauncher extends EventEmitter {
         }
       }
 
-      // Tell the user how things were classified — useful when investigating
-      // "why is this mod missing".
+      // Restore manually-added mods after placement
+      for (const ext of externalMods) {
+        try {
+          fs.writeFileSync(path.join(modsTarget, ext.name), ext.data)
+        } catch { /* ignore */ }
+      }
+
+      const extMsg = externalMods.length > 0 ? ` + ${externalMods.length} mod(s) externos` : ''
       this.progress({
         phase: 'mods',
-        message: `Mods: ${placedCount.mod} mods, ${placedCount.resourcepack} resourcepacks, ${placedCount.shaderpack} shaderpacks` +
+        message: `Mods: ${placedCount.mod} mods, ${placedCount.resourcepack} resourcepacks, ${placedCount.shaderpack} shaderpacks${extMsg}` +
                  (placedCount.unknown > 0 ? ` (${placedCount.unknown} desconhecidos em mods/)` : ''),
         percent: 90,
         detail: { placedCount },
