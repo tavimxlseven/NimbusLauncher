@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GlassPanel — snapshot > matches snapshot with custom className and style 1`] = `
+<div
+  class="glass-panel custom"
+  data-testid="glass"
+  style="background-color: var(--glass-bg, rgba(255,255,255,0.15)); border-radius: var(--glass-radius, 16px); border: 1px solid var(--glass-border, rgba(255,255,255,0.2)); box-shadow: var(--glass-shadow, 0 8px 32px rgba(0,0,0,0.18)); width: 100%; max-width: 100%; overflow-x: hidden; transition: background-color var(--glass-transition, 200ms ease), border-color var(--glass-transition, 200ms ease), box-shadow var(--glass-transition, 200ms ease); padding: 16px;"
+>
+  Content
+</div>
+`;
+
+exports[`GlassPanel — snapshot > matches snapshot with default props 1`] = `
+<div
+  class="glass-panel"
+  data-testid="glass"
+  style="background-color: var(--glass-bg, rgba(255,255,255,0.15)); border-radius: var(--glass-radius, 16px); border: 1px solid var(--glass-border, rgba(255,255,255,0.2)); box-shadow: var(--glass-shadow, 0 8px 32px rgba(0,0,0,0.18)); width: 100%; max-width: 100%; overflow-x: hidden; transition: background-color var(--glass-transition, 200ms ease), border-color var(--glass-transition, 200ms ease), box-shadow var(--glass-transition, 200ms ease);"
+>
+  Content
+</div>
+`;

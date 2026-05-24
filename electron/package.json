@@ -1,0 +1,110 @@
+{
+  "name": "nimbus-launcher-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nimbus Launcher — Electron main process",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "build:watch": "tsc --project tsconfig.json --watch",
+    "start": "electron dist/main/index.js",
+    "dev": "NODE_ENV=development electron dist/main/index.js",
+    "dist": "npm run build && electron-builder --win --x64",
+    "release": "npm run build && electron-builder --win --x64 && node scripts/make-zip.mjs",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch"
+  },
+  "build": {
+    "appId": "me.nimbusgg.launcher",
+    "productName": "Nimbus Launcher",
+    "copyright": "Copyright © 2025 Nimbus",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "!node_modules/electron-builder/**/*",
+      "!node_modules/.cache/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "renderer/dist",
+        "to": "renderer/dist"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "build/icon.ico"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "sign": null,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nimbus Launcher"
+    }
+  },
+  "dependencies": {
+    "@azure/msal-node": "2.16.2",
+    "@xmcl/core": "^2.15.1",
+    "@xmcl/curseforge": "^2.2.0",
+    "@xmcl/installer": "^6.1.2",
+    "@xmcl/modrinth": "^2.5.0",
+    "keytar": "7.9.0",
+    "uuid": "9.0.1",
+    "yauzl": "^2.10.0",
+    "yazl": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/jest": "29.5.12",
+    "@types/node": "20.14.10",
+    "@types/uuid": "^9.0.8",
+    "@types/yauzl": "^2.10.3",
+    "@types/yazl": "^2.4.6",
+    "archiver": "^8.0.0",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
+    "fast-check": "^3.22.0",
+    "jest": "29.7.0",
+    "ts-jest": "29.2.2",
+    "typescript": "5.5.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "extensionsToTreatAsEsm": [],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": "tsconfig.json",
+          "useESM": false
+        }
+      ]
+    }
+  }
+}

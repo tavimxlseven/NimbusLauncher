@@ -1,0 +1,87 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Nimbus Launcher — .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Kiro AI (never commit IDE AI files) ──────────────────────────────────────
+.kiro/
+
+# ── Environment / secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+/.env.production
+/config/master.key
+/config/credentials.yml.enc
+
+# ── Ruby / Rails ─────────────────────────────────────────────────────────────
+/.bundle
+/vendor/bundle
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+/tmp/local_secret.txt
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+/public/assets
+/public/downloads/*
+.rspec_status
+
+# ── Node / npm ───────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Electron build output ─────────────────────────────────────────────────────
+/electron/dist/
+/electron/release/
+/electron/renderer/dist/
+
+# ── Frontend build output ─────────────────────────────────────────────────────
+/frontend/dist/
+
+# ── SQLite (local dev databases) ─────────────────────────────────────────────
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/settings.json
+
+# ── Deploy scripts / server config ───────────────────────────────────────────
+/scripts/
+/.deploy/
+/scripts/servers.json
+/scripts/servers.ini
+*.bat
+*.ps1
+
+# ── Deploy / tutorial markdown docs ──────────────────────────────────────────
+README-deploy.md
+LAUNCHER_VERSION_ENDPOINT.md
+/docs/deploy/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+/log/development.log
+/log/test.log
+
+# ── TypeScript compiled output (keep src, ignore dist) ───────────────────────
+/electron/dist/
+/electron/preload.js
+/electron/preload.js.map
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.blockmap
+builder-effective-config.yaml

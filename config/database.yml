@@ -1,0 +1,38 @@
+# config/database.yml
+#
+# Database selection logic:
+#   - If DATABASE_URL starts with "postgres://" or "postgresql://", use PostgreSQL.
+#   - Otherwise (variable absent, empty, or any other prefix), use SQLite.
+
+<% postgres_url = ENV.fetch("DATABASE_URL", "").strip %>
+<% use_postgres  = postgres_url.start_with?("postgres://", "postgresql://") %>
+
+default: &default
+<% if use_postgres %>
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  url: <%= postgres_url %>
+<% else %>
+  adapter: sqlite3
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  timeout: 5000
+<% end %>
+
+development:
+  <<: *default
+<% unless use_postgres %>
+  database: storage/development.sqlite3
+<% end %>
+
+test:
+  <<: *default
+<% unless use_postgres %>
+  database: storage/test.sqlite3
+<% end %>
+
+production:
+  <<: *default
+<% unless use_postgres %>
+  database: storage/production.sqlite3
+<% end %>

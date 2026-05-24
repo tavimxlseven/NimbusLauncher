@@ -1,0 +1,117 @@
+/**
+ * LiquidGlass Design System — CSS Custom Properties
+ *
+ * Requirements: 7.1, 7.2, 7.5, 10.1, 10.5
+ *
+ * All LiquidGlass components consume these tokens so that a single
+ * ThemeSwitcher update propagates instantly across the entire UI.
+ */
+
+:root {
+  /* ── Blur ─────────────────────────────────────────────────────────────── */
+  /* backdrop-filter: blur ≥ 12px  (Requirement 7.1, 10.1) */
+  --glass-blur: 16px;
+
+  /* ── Background ──────────────────────────────────────────────────────── */
+  /* background-color opacity ≤ 0.8  (Requirement 7.1, 10.1) */
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-bg-hover: rgba(255, 255, 255, 0.22);
+  --glass-bg-active: rgba(255, 255, 255, 0.28);
+
+  /* ── Border ──────────────────────────────────────────────────────────── */
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-border-hover: rgba(255, 255, 255, 0.35);
+
+  /* ── Border radius ───────────────────────────────────────────────────── */
+  /* border-radius ≥ 12px  (Requirement 7.1, 10.1) */
+  --glass-radius: 16px;
+  --glass-radius-sm: 12px;
+  --glass-radius-lg: 24px;
+
+  /* ── Shadow ──────────────────────────────────────────────────────────── */
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.24);
+
+  /* ── Overlay (modal backdrop) ────────────────────────────────────────── */
+  --glass-overlay-bg: rgba(0, 0, 0, 0.45);
+  --glass-overlay-blur: 8px;
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  --glass-text-primary: rgba(255, 255, 255, 0.95);
+  --glass-text-secondary: rgba(255, 255, 255, 0.65);
+  --glass-text-muted: rgba(255, 255, 255, 0.4);
+
+  /* ── Transition ──────────────────────────────────────────────────────── */
+  /* Theme must apply in < 300ms  (Requirement 7.3) */
+  --glass-transition: 200ms ease;
+
+  /* ── Navbar ──────────────────────────────────────────────────────────── */
+  --glass-navbar-height: 64px;
+  --glass-navbar-height-mobile: 56px;
+  --glass-navbar-bg: rgba(255, 255, 255, 0.12);
+
+  /* ── Z-index scale ───────────────────────────────────────────────────── */
+  --z-navbar: 100;
+  --z-modal-overlay: 200;
+  --z-modal: 201;
+}
+
+/* ── Dark mode defaults (prefers-color-scheme)  (Requirement 7.6) ──────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgba(20, 20, 30, 0.55);
+    --glass-bg-hover: rgba(30, 30, 45, 0.65);
+    --glass-bg-active: rgba(40, 40, 60, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-border-hover: rgba(255, 255, 255, 0.22);
+    --glass-navbar-bg: rgba(10, 10, 20, 0.6);
+    --glass-text-primary: rgba(255, 255, 255, 0.92);
+    --glass-text-secondary: rgba(255, 255, 255, 0.6);
+    --glass-text-muted: rgba(255, 255, 255, 0.35);
+  }
+}
+
+/* ── Light mode explicit class ──────────────────────────────────────────── */
+[data-theme='light'] {
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-hover: rgba(255, 255, 255, 0.68);
+  --glass-bg-active: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(0, 0, 0, 0.15);
+  --glass-navbar-bg: rgba(255, 255, 255, 0.5);
+  --glass-text-primary: rgba(10, 10, 20, 0.92);
+  --glass-text-secondary: rgba(10, 10, 20, 0.6);
+  --glass-text-muted: rgba(10, 10, 20, 0.38);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --glass-overlay-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* ── Dark mode explicit class ───────────────────────────────────────────── */
+[data-theme='dark'] {
+  --glass-bg: rgba(20, 20, 30, 0.55);
+  --glass-bg-hover: rgba(30, 30, 45, 0.65);
+  --glass-bg-active: rgba(40, 40, 60, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-hover: rgba(255, 255, 255, 0.22);
+  --glass-navbar-bg: rgba(10, 10, 20, 0.6);
+  --glass-text-primary: rgba(255, 255, 255, 0.92);
+  --glass-text-secondary: rgba(255, 255, 255, 0.6);
+  --glass-text-muted: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Base reset for glass components ────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow at any viewport width  (Requirement 7.5) */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  background: #0d1117;
+  color: #e6edf3;
+}
