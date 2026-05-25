@@ -97,9 +97,10 @@ export class InstanceManager {
     fs.writeFileSync(f, JSON.stringify(meta, null, 2), { encoding: 'utf-8', mode: 0o644 })
   }
 
-  cachedModPath(sha1: string): string {
+  cachedModPath(sha1: string, ext = '.jar'): string {
     const safe = sha1.replace(/[^a-f0-9]/gi, '').toLowerCase()
-    return path.join(this.modsCacheDir, safe.slice(0, 2), `${safe}.jar`)
+    const safeExt = ext.startsWith('.') ? ext : `.${ext}`
+    return path.join(this.modsCacheDir, safe.slice(0, 2), `${safe}${safeExt}`)
   }
 }
 

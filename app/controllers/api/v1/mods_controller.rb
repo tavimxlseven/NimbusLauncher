@@ -85,7 +85,10 @@ module Api
           game_version: params[:game_version].presence,
           loader:       params[:loader].presence,
           category_id:  params[:category].presence,
-          sort:         params[:sort].presence
+          sort:         params[:sort].presence,
+          # Content type filtering: shaders, resourcepacks, mods
+          project_type: params[:project_type].presence,   # Modrinth: "mod" | "shader" | "resourcepack"
+          class_id:     params[:class_id].presence&.to_i, # CurseForge: 6=mods, 6552=shaders, 12=resourcepacks
         }.compact
       end
 
