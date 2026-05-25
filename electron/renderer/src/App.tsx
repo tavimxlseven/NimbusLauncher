@@ -128,6 +128,9 @@ declare global {
       openExternal: (url: string) => Promise<void>
       openFolder: (p: string) => Promise<{ ok: boolean; error?: string }>
       instancePath: (modpackId: string) => Promise<string>
+      instanceListFolder: (modpackId: string, folder: string) => Promise<{ ok: boolean; files: Array<{ name: string; size: number; enabled: boolean }>; error?: string }>
+      instanceToggleFile: (modpackId: string, folder: string, filename: string) => Promise<{ ok: boolean; newName?: string; error?: string }>
+      instanceDeleteFile: (modpackId: string, folder: string, filename: string) => Promise<{ ok: boolean; error?: string }>
       onAuthToken: (cb: (token: string) => void) => () => void
       openDiscordLogin: (backendUrl: string) => Promise<{ success: boolean; user?: unknown }>
       session: {
@@ -733,7 +736,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
 // ── Modpack Detail Panel ──────────────────────────────────────────────────────
 
-type DetailTab = 'mods' | 'worlds' | 'shaders' | 'resources'
+type DetailTab = 'mods' | 'worlds' | 'shaders' | 'resources' | 'datapacks'
 
 interface ModpackDetailProps {
   modpack: Modpack
@@ -1212,11 +1215,67 @@ const ModpackDetail: React.FC<ModpackDetailProps> = ({ modpack, user, onUpdated,
   // Reset mod search when modpack changes
   useEffect(() => { setModSearch('') }, [modpack.id])
 
-  const TABS: { key: DetailTab; label: string }[] = [
-    { key: 'mods', label: 'Mods' },
-    { key: 'worlds', label: 'Worlds' },
-    { key: 'shaders', label: 'Shaders' },
-    { key: 'resources', label: 'Resources' },
+  // ── Local folder state (shaders, resourcepacks, datapacks) ──────────────────
+  type LocalFile = { name: string; size: number; enabled: boolean }
+  const [localFiles, setLocalFiles] = useState<LocalFile[]>([])
+  const [localLoading, setLocalLoading] = useState(false)
+
+  const FOLDER_MAP: Partial<Record<DetailTab, string>> = {
+    shaders:   'shaderpacks',
+    resources: 'resourcepacks',
+    datapacks: 'datapacks',
+  }
+
+  const loadLocalFolder = useCallback(async (t: DetailTab) => {
+    const folder = FOLDER_MAP[t]
+    if (!folder || !window.nimbus?.instanceListFolder) return
+    setLocalLoading(true)
+    try {
+      const res = await window.nimbus.instanceListFolder(String(modpack.id), folder) as { ok: boolean; files: LocalFile[] }
+      if (res.ok) setLocalFiles(res.files)
+    } catch { /* ignore */ }
+    finally { setLocalLoading(false) }
+  }, [modpack.id])
+
+  useEffect(() => {
+    if (tab === 'shaders' || tab === 'resources' || tab === 'datapacks') {
+      loadLocalFolder(tab)
+    }
+  }, [tab, loadLocalFolder])
+
+  const handleToggleLocalFile = async (file: LocalFile) => {
+    const folder = FOLDER_MAP[tab]
+    if (!folder || !window.nimbus?.instanceToggleFile) return
+    const res = await window.nimbus.instanceToggleFile(String(modpack.id), folder, file.name) as { ok: boolean; newName?: string }
+    if (res.ok && res.newName) {
+      setLocalFiles(prev => prev.map(f => f.name === file.name
+        ? { ...f, name: res.newName!, enabled: !res.newName!.endsWith('.disabled') }
+        : f
+      ))
+    }
+  }
+
+  const handleDeleteLocalFile = async (file: LocalFile) => {
+    const folder = FOLDER_MAP[tab]
+    if (!folder || !window.nimbus?.instanceDeleteFile) return
+    const res = await window.nimbus.instanceDeleteFile(String(modpack.id), folder, file.name) as { ok: boolean }
+    if (res.ok) setLocalFiles(prev => prev.filter(f => f.name !== file.name))
+  }
+
+  const handleOpenLocalFolder = async () => {
+    const folder = FOLDER_MAP[tab]
+    if (!folder || !window.nimbus?.instancePath || !window.nimbus?.openFolder) return
+    const base = await window.nimbus.instancePath(String(modpack.id)) as string
+    const dir = `${base}/${folder}`
+    await window.nimbus.openFolder(dir)
+  }
+
+  const TABS: { key: DetailTab; label: string; icon: string }[] = [
+    { key: 'mods',       label: 'Mods',       icon: '📦' },
+    { key: 'shaders',    label: 'Shaders',    icon: '✨' },
+    { key: 'resources',  label: 'Texturas',   icon: '🎨' },
+    { key: 'datapacks',  label: 'Datapacks',  icon: '📂' },
+    { key: 'worlds',     label: 'Worlds',     icon: '🌍' },
   ]
 
   const showTabs = isCustom || installed
@@ -1478,13 +1537,15 @@ const ModpackDetail: React.FC<ModpackDetailProps> = ({ modpack, user, onUpdated,
                 className={`tab-btn${tab === t.key ? ' active' : ''}`}
                 onClick={() => setTab(t.key)}
                 style={{
-                  padding: '8px 16px', border: 'none', background: 'transparent',
+                  padding: '8px 14px', border: 'none', background: 'transparent',
                   color: tab === t.key ? M.accent : M.textSub,
-                  cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  cursor: 'pointer', fontSize: '12px', fontWeight: 600,
                   fontFamily: 'inherit', borderRadius: `${M.radiusSm} ${M.radiusSm} 0 0`,
                   borderBottom: tab === t.key ? `2px solid ${M.accent}` : '2px solid transparent',
                   marginBottom: '-1px',
+                  display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
+                <span style={{ fontSize: '13px' }}>{t.icon}</span>
                 {t.label}
               </button>
             ))}
@@ -1625,19 +1686,67 @@ const ModpackDetail: React.FC<ModpackDetailProps> = ({ modpack, user, onUpdated,
               </div>
             )}
 
-            {tab === 'shaders' && (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: M.textMuted, fontSize: '13px' }}>
-                <Layers size={28} color={M.textMuted} style={{ marginBottom: '10px', opacity: 0.4 }} />
-                <p style={{ margin: 0 }}>Gerenciamento de shaders em breve.</p>
-              </div>
-            )}
+            {(tab === 'shaders' || tab === 'resources' || tab === 'datapacks') && (() => {
+              const tabInfo = {
+                shaders:   { icon: '✨', label: 'shaders',      empty: 'Nenhum shader instalado.' },
+                resources: { icon: '🎨', label: 'texture packs', empty: 'Nenhum texture pack instalado.' },
+                datapacks: { icon: '📂', label: 'datapacks',    empty: 'Nenhum datapack instalado.' },
+              }[tab as 'shaders' | 'resources' | 'datapacks']!
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Toolbar */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', color: M.textMuted }}>
+                      {localFiles.length} {tabInfo.label}
+                    </span>
+                    <button onClick={handleOpenLocalFolder}
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', border: `1px solid ${M.border}`, background: 'rgba(255,255,255,0.05)', color: M.textSub, cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' }}>
+                      <FolderOpen size={12} /> Abrir pasta
+                    </button>
+                  </div>
 
-            {tab === 'resources' && (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: M.textMuted, fontSize: '13px' }}>
-                <Package size={28} color={M.textMuted} style={{ marginBottom: '10px', opacity: 0.4 }} />
-                <p style={{ margin: 0 }}>Gerenciamento de resource packs em breve.</p>
-              </div>
-            )}
+                  {localLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                      <Loader size={20} color={M.accent} style={{ animation: 'spin 1s linear infinite' }} />
+                    </div>
+                  ) : localFiles.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: M.textMuted, fontSize: '13px' }}>
+                      <div style={{ fontSize: '28px', marginBottom: '10px', opacity: 0.4 }}>{tabInfo.icon}</div>
+                      <p style={{ margin: '0 0 8px' }}>{tabInfo.empty}</p>
+                      <p style={{ margin: 0, fontSize: '12px' }}>Copie arquivos para a pasta ou adicione pela aba <strong style={{ color: M.accent }}>Mods</strong>.</p>
+                    </div>
+                  ) : (
+                    localFiles.map(file => {
+                      const enabled = file.enabled
+                      const displayName = file.name.replace(/\.disabled$/, '')
+                      const sizeMb = (file.size / 1024 / 1024).toFixed(1)
+                      return (
+                        <div key={file.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', background: enabled ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${enabled ? M.border : 'rgba(255,255,255,0.06)'}`, opacity: enabled ? 1 : 0.55 }}>
+                          <div style={{ fontSize: '18px', flexShrink: 0 }}>{tabInfo.icon}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: M.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {displayName}
+                            </div>
+                            <div style={{ fontSize: '11px', color: M.textMuted }}>{sizeMb} MB</div>
+                          </div>
+                          <button onClick={() => handleToggleLocalFile(file)} title={enabled ? 'Desativar' : 'Ativar'}
+                            style={{ width: 38, height: 22, borderRadius: '11px', border: 'none', background: enabled ? M.accent : 'rgba(255,255,255,0.12)', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 180ms' }}>
+                            <div style={{ position: 'absolute', top: '2px', left: enabled ? '18px' : '2px', width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', transition: 'left 180ms' }} />
+                          </button>
+                          <button onClick={() => handleDeleteLocalFile(file)}
+                            style={{ width: 28, height: 28, borderRadius: M.radiusSm, border: '1px solid transparent', background: 'transparent', color: M.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 150ms' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,81,73,0.15)'; e.currentTarget.style.color = M.red }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = M.textMuted }}
+                            title="Remover">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </>
       )}
@@ -1645,7 +1754,7 @@ const ModpackDetail: React.FC<ModpackDetailProps> = ({ modpack, user, onUpdated,
       {!showTabs && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: M.textMuted, fontSize: '13px', flexDirection: 'column', gap: '8px' }}>
           <Download size={28} color={M.textMuted} style={{ opacity: 0.3 }} />
-          <span>Instale o modpack para gerenciar mods, worlds e shaders.</span>
+          <span>Instale o modpack para gerenciar mods, shaders e datapacks.</span>
         </div>
       )}
     </div>

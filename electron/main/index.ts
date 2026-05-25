@@ -278,6 +278,56 @@ app.whenReady().then(() => {
     return path.join(NIMBUS_DIR, 'instances', String(modpackId).replace(/[^a-zA-Z0-9_-]/g, '_'), '.minecraft')
   })
 
+  // IPC: list files in a subfolder of a modpack instance (mods, shaderpacks, resourcepacks, datapacks)
+  ipcMain.handle('instance:listFolder', (_e, modpackId: string, folder: string) => {
+    try {
+      const safeFolder = ['mods', 'shaderpacks', 'resourcepacks', 'datapacks', 'saves'].includes(folder) ? folder : 'mods'
+      const dir = path.join(NIMBUS_DIR, 'instances', String(modpackId).replace(/[^a-zA-Z0-9_-]/g, '_'), '.minecraft', safeFolder)
+      fs.mkdirSync(dir, { recursive: true })
+      const files = fs.readdirSync(dir)
+        .filter(f => ['.jar', '.zip'].some(ext => f.toLowerCase().endsWith(ext)))
+        .map(f => {
+          const stat = fs.statSync(path.join(dir, f))
+          return { name: f, size: stat.size, enabled: !f.endsWith('.disabled') }
+        })
+      return { ok: true, files }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err), files: [] }
+    }
+  })
+
+  // IPC: toggle a file in a modpack instance folder (rename .jar ↔ .jar.disabled)
+  ipcMain.handle('instance:toggleFile', (_e, modpackId: string, folder: string, filename: string) => {
+    try {
+      const safeFolder = ['mods', 'shaderpacks', 'resourcepacks', 'datapacks'].includes(folder) ? folder : 'mods'
+      const dir = path.join(NIMBUS_DIR, 'instances', String(modpackId).replace(/[^a-zA-Z0-9_-]/g, '_'), '.minecraft', safeFolder)
+      const fullPath = path.join(dir, filename)
+      if (filename.endsWith('.disabled')) {
+        const newPath = fullPath.slice(0, -'.disabled'.length)
+        fs.renameSync(fullPath, newPath)
+        return { ok: true, newName: path.basename(newPath) }
+      } else {
+        const newPath = fullPath + '.disabled'
+        fs.renameSync(fullPath, newPath)
+        return { ok: true, newName: path.basename(newPath) }
+      }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // IPC: delete a file from a modpack instance folder
+  ipcMain.handle('instance:deleteFile', (_e, modpackId: string, folder: string, filename: string) => {
+    try {
+      const safeFolder = ['mods', 'shaderpacks', 'resourcepacks', 'datapacks'].includes(folder) ? folder : 'mods'
+      const dir = path.join(NIMBUS_DIR, 'instances', String(modpackId).replace(/[^a-zA-Z0-9_-]/g, '_'), '.minecraft', safeFolder)
+      fs.unlinkSync(path.join(dir, filename))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
   // IPC: game launch + progress
   const gameLauncher = new GameLauncher()
   let currentLogPath: string | null = null

@@ -29,6 +29,18 @@ const nimbusAPI = {
   // Get the on-disk path of a modpack instance (.minecraft dir)
   instancePath: (modpackId: string) => ipcRenderer.invoke('instance:path', modpackId),
 
+  // List files in a subfolder of a modpack instance
+  instanceListFolder: (modpackId: string, folder: string) =>
+    ipcRenderer.invoke('instance:listFolder', modpackId, folder),
+
+  // Toggle a file enabled/disabled in a modpack instance folder
+  instanceToggleFile: (modpackId: string, folder: string, filename: string) =>
+    ipcRenderer.invoke('instance:toggleFile', modpackId, folder, filename),
+
+  // Delete a file from a modpack instance folder
+  instanceDeleteFile: (modpackId: string, folder: string, filename: string) =>
+    ipcRenderer.invoke('instance:deleteFile', modpackId, folder, filename),
+
   // Listen for deep link auth token (nimbus://auth?token=XXX)
   onAuthToken: (cb: (token: string) => void) => {
     ipcRenderer.on('deep-link:auth-token', (_e, token: string) => cb(token))

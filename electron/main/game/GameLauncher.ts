@@ -253,15 +253,22 @@ async function validateJarFile(
   }
 
   // Deep scan — catches the JVM-killing STORED+descriptor combination.
-  // For .jar files we also require META-INF/MANIFEST.MF.
+  // For .jar files we also require META-INF/MANIFEST.MF, UNLESS the file
+  // is actually a datapack (contains data/ structure) — datapacks are often
+  // distributed as .jar without a manifest and are valid.
   // For .zip files (resource packs, shader packs) we only check ZIP structure.
   const scan = await scanZipStructure(file)
   if (!scan.ok) {
     return { ok: false, reason: scan.reason ?? 'estrutura inválida', repairable: scan.repairable }
   }
-  // Only require MANIFEST.MF for actual JAR files (not resource/shader packs)
+  // Only require MANIFEST.MF for actual JAR mods (not datapacks, resource/shader packs)
+  // A .jar without MANIFEST but with mod metadata is invalid; without MANIFEST
+  // but with pack.mcmeta or data/ it's a datapack/resourcepack — accept it.
   if (file.toLowerCase().endsWith('.jar') && !scan.hasManifest) {
-    return { ok: false, reason: 'JAR sem META-INF/MANIFEST.MF' }
+    // If it has pack.mcmeta or data/ entries it's a datapack/resourcepack — valid
+    // detectJarKind will route it to the right folder later
+    // We accept it here and let the kind detection handle placement
+    return { ok: true }
   }
   return { ok: true }
 }
