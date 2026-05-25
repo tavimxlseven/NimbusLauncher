@@ -3257,8 +3257,17 @@ interface BrowsedMod {
   categories?: string[]
 }
 
+// Content type for the Mods page tabs
+type ContentType = 'mods' | 'shaders' | 'resourcepacks'
+
+const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
+  mods: 'Mods',
+  shaders: 'Shaders',
+  resourcepacks: 'Texturas',
+}
+
 const ModsPage: React.FC = () => {
-  // Two views: 'browse' (search the full catalog) and 'installed' (mods in your library modpacks)
+  const [contentType, setContentType] = useState<ContentType>('mods')
   const [view, setView] = useState<'browse' | 'installed'>('browse')
 
   // Browse state
@@ -3267,6 +3276,9 @@ const ModsPage: React.FC = () => {
   const [browseLoading, setBrowseLoading] = useState(false)
   const [browseError, setBrowseError] = useState<string | null>(null)
   const [source, setSource] = useState<'both' | 'modrinth' | 'curseforge'>('both')
+
+  // Reset search when switching content type
+  useEffect(() => { setBrowseQuery(''); setBrowseResults([]) }, [contentType])
 
   // Modpack picker for adding to
   const [modpacks, setModpacks] = useState<Modpack[]>([])
@@ -3312,6 +3324,9 @@ const ModsPage: React.FC = () => {
       if (browseQuery.trim()) params.set('q', browseQuery.trim())
       params.set('per_page', '20')
       if (source !== 'both') params.set('source', source)
+      // Pass content type so the backend filters by project_type / classId
+      if (contentType === 'shaders') { params.set('project_type', 'shader'); params.set('class_id', '6552') }
+      else if (contentType === 'resourcepacks') { params.set('project_type', 'resourcepack'); params.set('class_id', '12') }
       const res = await apiFetch(`/api/v1/mods?${params}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
@@ -3333,7 +3348,7 @@ const ModsPage: React.FC = () => {
     } finally {
       setBrowseLoading(false)
     }
-  }, [browseQuery, source])
+  }, [browseQuery, source, contentType])
 
   useEffect(() => { doSearch() }, [doSearch])
 
@@ -3457,23 +3472,45 @@ const ModsPage: React.FC = () => {
   return (
     <div style={{ padding: '24px 28px', animation: 'fadeIn 200ms ease', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: M.text, letterSpacing: '-0.02em' }}>Mods</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexShrink: 0 }}>
+        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: M.text, letterSpacing: '-0.02em' }}>
+          {CONTENT_TYPE_LABELS[contentType]}
+        </h2>
         <div style={{ display: 'flex', gap: '4px', padding: '3px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${M.border}`, borderRadius: '12px' }}>
           {(['browse', 'installed'] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               style={{
-                padding: '7px 16px', borderRadius: '9px',
-                border: 'none', cursor: 'pointer',
+                padding: '7px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer',
                 background: view === v ? 'rgba(27,217,106,0.18)' : 'transparent',
                 color: view === v ? M.accent : M.textSub,
-                fontSize: '12px', fontWeight: 700, fontFamily: 'inherit',
-                transition: 'all 150ms',
+                fontSize: '12px', fontWeight: 700, fontFamily: 'inherit', transition: 'all 150ms',
               }}>
               {v === 'browse' ? 'Explorar' : 'Instalados'}
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Content type tabs */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexShrink: 0 }}>
+        {(['mods', 'shaders', 'resourcepacks'] as ContentType[]).map(ct => {
+          const icons: Record<ContentType, string> = { mods: '📦', shaders: '✨', resourcepacks: '🎨' }
+          return (
+            <button key={ct} onClick={() => setContentType(ct)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '7px 14px', borderRadius: '10px',
+                border: `1px solid ${contentType === ct ? M.accent + '55' : M.border}`,
+                background: contentType === ct ? `${M.accent}15` : 'rgba(255,255,255,0.04)',
+                color: contentType === ct ? M.accent : M.textSub,
+                fontSize: '12px', fontWeight: 700, fontFamily: 'inherit',
+                cursor: 'pointer', transition: 'all 150ms',
+              }}>
+              <span>{icons[ct]}</span>
+              {CONTENT_TYPE_LABELS[ct]}
+            </button>
+          )
+        })}
       </div>
 
       {/* Search bar + filters */}
@@ -3483,7 +3520,7 @@ const ModsPage: React.FC = () => {
             <input
               value={browseQuery}
               onChange={e => setBrowseQuery(e.target.value)}
-              placeholder="Buscar mods..."
+              placeholder={`Buscar ${CONTENT_TYPE_LABELS[contentType].toLowerCase()}...`}
               style={{
                 width: '100%', padding: '11px 14px 11px 38px',
                 background: 'rgba(255,255,255,0.06)', border: `1px solid ${M.border}`,
@@ -3551,12 +3588,16 @@ const ModsPage: React.FC = () => {
                     border: `1px solid ${M.border}`,
                     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}>
-                    {mod.imageUrl
-                      ? <img src={mod.imageUrl} alt="" style={{ width: 44, height: 44, borderRadius: '10px', flexShrink: 0, objectFit: 'cover' }} />
-                      : <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'rgba(255,255,255,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Package size={20} color={M.textMuted} />
-                        </div>
-                    }
+                    {/* Icon with onError fallback */}
+                    <div style={{ width: 44, height: 44, borderRadius: '10px', flexShrink: 0, overflow: 'hidden', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {mod.imageUrl
+                        ? <img src={mod.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+                        : (contentType === 'shaders' ? <span style={{ fontSize: '20px' }}>✨</span>
+                          : contentType === 'resourcepacks' ? <span style={{ fontSize: '20px' }}>🎨</span>
+                          : <Package size={20} color={M.textMuted} />)
+                      }
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
                         <span style={{ fontSize: '14px', fontWeight: 700, color: M.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
