@@ -41,27 +41,31 @@ interface ModDetailData extends ModItem {
   externalUrl?: string
 }
 
-// ── Design tokens (Modrinth + iOS LiquidGlass) ────────────────────────────────
+// ── Design tokens (Modrinth + iOS LiquidGlass — refined) ─────────────────────
 
 const M = {
-  bg:        '#080c12',
-  cardBg:    'rgba(255,255,255,0.065)',
-  sidebarBg: 'rgba(255,255,255,0.05)',
-  border:    'rgba(255,255,255,0.12)',
-  borderHv:  'rgba(255,255,255,0.24)',
+  bg:        '#0b0e14',
+  bgCard:    'rgba(255,255,255,0.055)',
+  bgHover:   'rgba(255,255,255,0.085)',
+  sidebarBg: 'rgba(255,255,255,0.04)',
+  border:    'rgba(255,255,255,0.10)',
+  borderHv:  'rgba(255,255,255,0.20)',
   accent:    '#1bd96a',
   accentHv:  '#17c45e',
-  text:      'rgba(255,255,255,0.97)',
-  textSub:   'rgba(255,255,255,0.65)',
-  textMuted: 'rgba(255,255,255,0.38)',
+  accentDim: 'rgba(27,217,106,0.14)',
+  text:      'rgba(255,255,255,0.95)',
+  textSub:   'rgba(255,255,255,0.62)',
+  textMuted: 'rgba(255,255,255,0.36)',
   red:       '#f85149',
   orange:    '#e3b341',
   blue:      '#58a6ff',
-  radius:    '14px',
-  radiusSm:  '10px',
+  purple:    '#a78bfa',
+  radius:    '12px',
+  radiusSm:  '8px',
   radiusLg:  '18px',
-  navH:      '64px',
+  navH:      '60px',
   sideW:     '272px',
+  glass:     'rgba(11,14,20,0.88)',
 }
 
 // ── Global CSS ────────────────────────────────────────────────────────────────
@@ -76,39 +80,55 @@ const GLOBAL_CSS = `
     -webkit-font-smoothing: antialiased;
     font-size: 15px;
   }
-  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
   input::placeholder { color: ${M.textMuted}; }
   select option { background: #161b22; color: ${M.text}; }
 
   .row-item {
-    transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    transition: background 140ms ease, border-color 140ms ease;
     cursor: pointer;
   }
   .row-item:hover {
-    background: rgba(255,255,255,0.09) !important;
-    box-shadow: 0 6px 28px rgba(0,0,0,0.45) !important;
-    transform: translateY(-1px);
+    background: ${M.bgHover} !important;
+    border-color: ${M.borderHv} !important;
   }
 
-  .sidebar-btn { transition: background 150ms ease, color 150ms ease, border-left 150ms ease; }
-  .sidebar-btn:hover { background: rgba(255,255,255,0.10) !important; color: ${M.text} !important; }
+  .sidebar-btn { transition: background 140ms ease, color 140ms ease; }
+  .sidebar-btn:hover { background: rgba(255,255,255,0.09) !important; color: ${M.text} !important; }
+  .sidebar-btn.active { background: ${M.accentDim} !important; color: ${M.accent} !important; border-left: 2px solid ${M.accent} !important; }
 
   .glass-input:focus {
     border-color: ${M.accent} !important;
-    box-shadow: 0 0 0 3px ${M.accent}33 !important;
+    box-shadow: 0 0 0 3px ${M.accent}28 !important;
     outline: none;
   }
 
-  .btn-accent:hover { background: ${M.accentHv} !important; transform: translateY(-1px); box-shadow: 0 6px 20px ${M.accent}55 !important; }
-  .btn-ghost:hover { background: rgba(255,255,255,0.12) !important; border-color: rgba(255,255,255,0.22) !important; }
+  .btn-accent { transition: all 150ms ease; }
+  .btn-accent:hover { background: ${M.accentHv} !important; box-shadow: 0 4px 16px ${M.accent}44 !important; }
+  .btn-ghost { transition: all 150ms ease; }
+  .btn-ghost:hover { background: rgba(255,255,255,0.10) !important; border-color: ${M.borderHv} !important; }
 
-  .nav-link-item { transition: color 150ms ease, background 150ms ease; }
-  .nav-link-item:hover { color: ${M.text} !important; background: rgba(255,255,255,0.08) !important; }
+  .nav-link-item { transition: color 140ms ease, background 140ms ease; }
+  .nav-link-item:hover { color: ${M.text} !important; background: rgba(255,255,255,0.07) !important; }
+  .nav-link-item.active-nav { color: ${M.accent} !important; }
+
+  /* Category chips */
+  .cat-chip { transition: all 120ms ease; cursor: pointer; }
+  .cat-chip:hover { border-color: rgba(255,255,255,0.22) !important; background: rgba(255,255,255,0.08) !important; }
+  .cat-chip.active { background: ${M.accentDim} !important; border-color: ${M.accent}55 !important; color: ${M.accent} !important; }
+
+  /* Changelog version badge */
+  .version-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .version-major { background: rgba(27,217,106,0.15); color: ${M.accent}; border: 1px solid ${M.accent}44; }
+  .version-minor { background: rgba(88,166,255,0.15); color: ${M.blue}; border: 1px solid ${M.blue}44; }
+  .version-patch { background: rgba(255,255,255,0.08); color: ${M.textSub}; border: 1px solid ${M.border}; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
   @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @keyframes wordCycle {
     0%, 28%   { opacity: 1; transform: translateY(0); }
@@ -116,27 +136,30 @@ const GLOBAL_CSS = `
     66%, 94%  { opacity: 1; transform: translateY(0); }
     99%, 100% { opacity: 0; transform: translateY(-8px); }
   }
-  @keyframes glowPulse {
-    0%, 100% { opacity: 0.6; }
-    50%      { opacity: 1; }
-  }
+  @keyframes glowPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
   /* Hero grid pattern */
   .hero-pattern {
     background-image:
-      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
-    background-size: 44px 44px;
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 
   /* iOS LiquidGlass panel */
   .glass-panel {
-    background: rgba(255,255,255,0.055);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.13);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.11);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
   }
+
+  /* Download card hover */
+  .dl-card { transition: all 160ms ease; }
+  .dl-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important; border-color: ${M.borderHv} !important; }
+  .dl-card.primary:hover { box-shadow: 0 12px 40px ${M.accent}33 !important; }
 
   @media (max-width: 960px) {
     .sidebar-col { display: none !important; }
@@ -2033,20 +2056,20 @@ const LibraryPage: React.FC<{ user: User | null }> = ({ user }) => {
 interface DownloadAsset {
   os:        'windows' | 'macos' | 'linux'
   label:     string
-  /** Public URL served by the backend (Rails serves /downloads/* statically). */
   url:       string
   size?:     string
-  format:    'installer' | 'portable'
-  /** Disabled placeholders for platforms not yet built. */
+  format:    'installer' | 'portable' | 'zip'
   disabled?: boolean
+  icon:      string
+  desc:      string
 }
 
 const DOWNLOAD_ASSETS: DownloadAsset[] = [
-  { os: 'windows', label: 'Windows 10/11 (Instalador)',  url: '/downloads/Nimbus-Launcher-Setup-0.2.0.exe', format: 'installer', size: '~72 MB' },
-  { os: 'windows', label: 'Windows (Portable EXE)',      url: '/downloads/Nimbus-Launcher-Portable-0.2.0.exe', format: 'portable',  size: '~71 MB' },
-  { os: 'windows', label: 'Windows (Portable ZIP)',      url: '/downloads/Nimbus-Launcher-v0.2.0-win-x64.zip', format: 'portable',  size: '~113 MB' },
-  { os: 'macos',   label: 'macOS (em breve)',            url: '#',                                               format: 'installer', disabled: true },
-  { os: 'linux',   label: 'Linux (em breve)',            url: '#',                                               format: 'installer', disabled: true },
+  { os: 'windows', label: 'Windows Installer',  url: '/downloads/Nimbus-Launcher-Setup-0.2.0.exe',    format: 'installer', size: '72 MB',  icon: '🪟', desc: 'Recomendado para a maioria dos usuários. Instala atalhos automaticamente.' },
+  { os: 'windows', label: 'Windows Portable',   url: '/downloads/Nimbus-Launcher-Portable-0.2.0.exe', format: 'portable',  size: '71 MB',  icon: '💼', desc: 'Não requer instalação. Execute direto do arquivo.' },
+  { os: 'windows', label: 'Windows ZIP',        url: '/downloads/Nimbus-Launcher-v0.2.0-win-x64.zip', format: 'zip',       size: '113 MB', icon: '📦', desc: 'Arquivo compactado com todos os arquivos do launcher.' },
+  { os: 'macos',   label: 'macOS (em breve)',   url: '#', format: 'installer', size: '—', icon: '🍎', desc: 'Suporte para macOS em desenvolvimento.', disabled: true },
+  { os: 'linux',   label: 'Linux (em breve)',   url: '#', format: 'installer', size: '—', icon: '🐧', desc: 'Suporte para Linux em desenvolvimento.', disabled: true },
 ]
 
 function detectOS(): 'windows' | 'macos' | 'linux' | 'unknown' {
@@ -2057,127 +2080,248 @@ function detectOS(): 'windows' | 'macos' | 'linux' | 'unknown' {
   return 'unknown'
 }
 
+// ── Changelog data ────────────────────────────────────────────────────────────
+
+interface ChangelogEntry {
+  version: string
+  date: string
+  type: 'major' | 'minor' | 'patch'
+  title: string
+  changes: Array<{ type: 'fix' | 'feat' | 'perf' | 'chore'; text: string }>
+}
+
+const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.2.0', date: '2026-05-26', type: 'major', title: 'Redesign + Perfis Offline',
+    changes: [
+      { type: 'feat', text: 'Sidebar icon-only estilo Modrinth (64px)' },
+      { type: 'feat', text: 'Múltiplos perfis offline/pirata com username customizado' },
+      { type: 'feat', text: 'Upload de skin .png por perfil offline' },
+      { type: 'feat', text: 'Modo offline só disponível com conta Microsoft vinculada' },
+      { type: 'chore', text: 'Novos tokens de design e animações refinadas' },
+    ],
+  },
+  {
+    version: '0.1.3', date: '2026-05-25', type: 'patch', title: 'Datapacks + Gerenciamento de Conteúdo',
+    changes: [
+      { type: 'fix', text: 'Datapacks (Terralith, Nullscape, etc.) agora instalam corretamente' },
+      { type: 'feat', text: 'Abas de Shaders, Texturas e Datapacks com gerenciamento real' },
+      { type: 'feat', text: 'Ativar/desativar e remover shaders, textures e datapacks' },
+      { type: 'feat', text: 'Botão para abrir pasta no explorador de arquivos' },
+    ],
+  },
+  {
+    version: '0.1.2', date: '2026-05-25', type: 'patch', title: 'Shaders, Textures & ZIP Fix',
+    changes: [
+      { type: 'fix', text: 'Shaders e texture packs não falhavam mais na validação de JAR' },
+      { type: 'feat', text: 'Abas de Shaders e Texturas na página de Mods' },
+      { type: 'feat', text: 'Ícones nos cards de mods, shaders e texturas' },
+      { type: 'feat', text: 'Arquivos externos preservados em mods/, resourcepacks/ e shaderpacks/' },
+    ],
+  },
+  {
+    version: '0.1.1', date: '2026-05-24', type: 'patch', title: 'Performance & External Mods',
+    changes: [
+      { type: 'perf', text: 'Validação de mods em paralelo (8 simultâneos) — muito mais rápido' },
+      { type: 'feat', text: 'Mods copiados manualmente para mods/ são preservados entre launches' },
+      { type: 'perf', text: 'Cache validation: tamanho primeiro, SHA-1 só quando necessário' },
+    ],
+  },
+  {
+    version: '0.1.0', date: '2026-05-24', type: 'major', title: 'Primeiro Lançamento Público',
+    changes: [
+      { type: 'feat', text: 'Instalação de modpacks do CurseForge e Modrinth' },
+      { type: 'feat', text: 'Pipeline completo: Minecraft → Loader → Mods → Overrides → Launch' },
+      { type: 'feat', text: 'Cache de mods com verificação SHA-1' },
+      { type: 'feat', text: 'Java automático (JRE 8, 17 ou 21 por versão do Minecraft)' },
+      { type: 'feat', text: 'Autenticação Microsoft / Xbox Live' },
+      { type: 'feat', text: 'Auto-update com bloqueio de UI para atualizações obrigatórias' },
+    ],
+  },
+]
+
+const CHANGE_TYPE_COLORS = {
+  fix:   { bg: 'rgba(248,81,73,0.12)', color: '#f85149', label: 'Fix' },
+  feat:  { bg: 'rgba(27,217,106,0.12)', color: '#1bd96a', label: 'Novo' },
+  perf:  { bg: 'rgba(88,166,255,0.12)', color: '#58a6ff', label: 'Perf' },
+  chore: { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', label: 'Chore' },
+}
+
+// ── Changelog page ────────────────────────────────────────────────────────────
+
+const ChangelogPage: React.FC = () => (
+  <div style={{ padding: '56px 24px 80px', maxWidth: 760, margin: '0 auto', animation: 'fadeIn 250ms ease' }}>
+    <div style={{ marginBottom: '40px' }}>
+      <h1 style={{ margin: '0 0 8px', fontSize: '32px', fontWeight: 800, letterSpacing: '-0.02em', color: M.text }}>
+        Changelog
+      </h1>
+      <p style={{ margin: 0, fontSize: '15px', color: M.textSub }}>
+        Histórico de versões do Nimbus Launcher
+      </p>
+    </div>
+
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+      {CHANGELOG.map((entry, idx) => {
+        const typeClass = entry.type === 'major' ? 'version-major' : entry.type === 'minor' ? 'version-minor' : 'version-patch'
+        const typeLabel = entry.type === 'major' ? 'Major' : entry.type === 'minor' ? 'Minor' : 'Patch'
+        return (
+          <div key={entry.version} style={{ display: 'flex', gap: '24px', paddingBottom: idx < CHANGELOG.length - 1 ? '0' : '0' }}>
+            {/* Timeline */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '20px' }}>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: entry.type === 'major' ? M.accent : entry.type === 'minor' ? M.blue : M.border, border: `2px solid ${M.bg}`, marginTop: '20px', flexShrink: 0, zIndex: 1 }} />
+              {idx < CHANGELOG.length - 1 && (
+                <div style={{ width: 2, flex: 1, background: M.border, marginTop: '4px' }} />
+              )}
+            </div>
+
+            {/* Content */}
+            <div style={{ flex: 1, paddingBottom: '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: M.text }}>v{entry.version}</span>
+                <span className={`version-badge ${typeClass}`}>{typeLabel}</span>
+                <span style={{ fontSize: '13px', color: M.textMuted }}>{entry.date}</span>
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: M.text, marginBottom: '12px' }}>{entry.title}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {entry.changes.map((c, i) => {
+                  const ct = CHANGE_TYPE_COLORS[c.type]
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <span style={{ padding: '2px 7px', borderRadius: '5px', fontSize: '11px', fontWeight: 700, background: ct.bg, color: ct.color, flexShrink: 0, marginTop: '1px' }}>
+                        {ct.label}
+                      </span>
+                      <span style={{ fontSize: '14px', color: M.textSub, lineHeight: 1.5 }}>{c.text}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  </div>
+)
+
+// ── Download page ─────────────────────────────────────────────────────────────
+
 const DownloadPage: React.FC = () => {
   const detected = detectOS()
   const primary = DOWNLOAD_ASSETS.find(a => a.os === detected && !a.disabled && a.format === 'installer')
                 ?? DOWNLOAD_ASSETS.find(a => !a.disabled)
 
   return (
-    <div style={{ padding: '64px 24px 80px', maxWidth: 980, margin: '0 auto', animation: 'fadeIn 250ms ease' }}>
+    <div style={{ padding: '56px 24px 80px', maxWidth: 900, margin: '0 auto', animation: 'fadeIn 250ms ease' }}>
+      {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-        <img src="/nimbus-logo-full.png" alt="Nimbus Launcher" width={220} height={220}
-          style={{
-            width: 220, height: 220, objectFit: 'contain', display: 'block', margin: '0 auto 20px',
-            filter: `drop-shadow(0 12px 48px ${M.accent}55)`,
-          }} />
-        <h1 style={{ margin: '0 0 12px', fontSize: '40px', fontWeight: 800, letterSpacing: '-0.02em', color: M.text }}>
+        <img src="/nimbus-logo-full.png" alt="Nimbus Launcher" width={160} height={160}
+          style={{ width: 160, height: 160, objectFit: 'contain', display: 'block', margin: '0 auto 20px',
+            filter: `drop-shadow(0 12px 48px ${M.accent}55)`, animation: 'float 4s ease-in-out infinite' }} />
+        <h1 style={{ margin: '0 0 12px', fontSize: '38px', fontWeight: 800, letterSpacing: '-0.02em', color: M.text }}>
           Baixar Nimbus Launcher
         </h1>
-        <p style={{ margin: '0 auto', maxWidth: 600, fontSize: '15px', lineHeight: 1.6, color: M.textSub }}>
-          Instale modpacks com 1 clique, jogue com sua conta Microsoft, gerencie mods e shaders
-          tudo num lugar. Grátis, código aberto, sem propaganda.
+        <p style={{ margin: '0 auto 20px', maxWidth: 560, fontSize: '16px', lineHeight: 1.6, color: M.textSub }}>
+          Instale modpacks com 1 clique, gerencie mods, shaders e texturas. Grátis e código aberto.
         </p>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: M.accentDim, border: `1px solid ${M.accent}44`, fontSize: '13px', fontWeight: 700, color: M.accent }}>
+          ✓ Versão atual: 0.2.0
+        </div>
       </div>
 
-      {/* Primary CTA — auto-detected platform */}
+      {/* Primary CTA */}
       {primary && !primary.disabled && (
         <div style={{
-          background: `linear-gradient(135deg, ${M.accent}18, ${M.accent}08)`,
+          background: `linear-gradient(135deg, ${M.accent}14, ${M.accent}06)`,
           border: `1px solid ${M.accent}44`,
-          borderRadius: '20px',
-          padding: '28px 32px',
-          marginBottom: '36px',
+          borderRadius: '20px', padding: '28px 32px', marginBottom: '32px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px',
-          boxShadow: `0 12px 40px ${M.accent}22`,
-          flexWrap: 'wrap',
+          boxShadow: `0 8px 32px ${M.accent}18`, flexWrap: 'wrap',
         }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: M.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
-              {detected === 'unknown' ? 'Recomendado' : 'Detectamos seu sistema'}
+            <div style={{ fontSize: '11px', fontWeight: 700, color: M.accent, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>
+              {detected === 'unknown' ? 'Recomendado' : `Detectamos: ${detected}`}
             </div>
             <div style={{ fontSize: '22px', fontWeight: 800, color: M.text, marginBottom: '4px' }}>
-              {primary.label}
+              {primary.icon} {primary.label}
             </div>
-            <div style={{ fontSize: '13px', color: M.textMuted }}>
-              {primary.format === 'installer' ? 'Instalador' : 'ZIP portável'}{primary.size ? ` · ${primary.size}` : ''}
-            </div>
+            <div style={{ fontSize: '13px', color: M.textMuted }}>{primary.desc}</div>
           </div>
           <a href={primary.url} download
+            className="btn-accent"
             style={{
-              padding: '16px 32px', fontSize: '16px', fontWeight: 800,
-              background: M.accent, color: '#fff',
-              borderRadius: '14px', textDecoration: 'none',
-              boxShadow: `0 8px 28px ${M.accent}66, inset 0 1px 0 rgba(255,255,255,0.25)`,
-              display: 'inline-flex', alignItems: 'center', gap: '10px',
-              transition: 'transform 150ms ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
-          >
-            <Download size={20} aria-hidden="true" /> Baixar agora
+              padding: '14px 28px', fontSize: '15px', fontWeight: 800,
+              background: M.accent, color: '#fff', borderRadius: '12px',
+              textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px',
+              boxShadow: `0 6px 24px ${M.accent}55`,
+            }}>
+            <Download size={18} /> Baixar agora · {primary.size}
           </a>
         </div>
       )}
 
-      {/* All downloads */}
-      <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: 700, color: M.textSub, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-        Todas as plataformas
+      {/* All downloads grid */}
+      <h2 style={{ margin: '0 0 16px', fontSize: '13px', fontWeight: 700, color: M.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        Todas as versões
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', marginBottom: '52px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px', marginBottom: '48px' }}>
         {DOWNLOAD_ASSETS.map((a) => {
           const isPrimary = primary && a.url === primary.url
           return (
-            <a
-              key={a.os + a.format}
-              href={a.disabled ? undefined : a.url}
+            <a key={a.os + a.format} href={a.disabled ? undefined : a.url}
               download={!a.disabled ? '' : undefined}
-              aria-disabled={a.disabled}
+              className={`dl-card${isPrimary ? ' primary' : ''}`}
               style={{
-                display: 'flex', flexDirection: 'column', gap: '6px',
+                display: 'flex', flexDirection: 'column', gap: '8px',
                 padding: '18px 20px', borderRadius: '14px',
-                border: `1px solid ${isPrimary ? M.accent + '66' : M.border}`,
-                background: a.disabled ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.045)',
+                border: `1px solid ${isPrimary ? M.accent + '55' : M.border}`,
+                background: a.disabled ? 'rgba(255,255,255,0.02)' : isPrimary ? `${M.accent}08` : 'rgba(255,255,255,0.04)',
                 color: a.disabled ? M.textMuted : M.text,
-                textDecoration: 'none',
-                cursor: a.disabled ? 'not-allowed' : 'pointer',
-                opacity: a.disabled ? 0.55 : 1,
-                transition: 'all 150ms ease',
-              }}
-              onMouseEnter={(e) => { if (!a.disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
-              onMouseLeave={(e) => { if (!a.disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.045)' }}
-            >
-              <div style={{ fontSize: '15px', fontWeight: 700 }}>{a.label}</div>
-              <div style={{ fontSize: '12px', color: M.textMuted, display: 'flex', justifyContent: 'space-between' }}>
-                <span>{a.format === 'installer' ? 'Instalador (.exe)' : 'Portable (.zip)'}</span>
-                <span>{a.size ?? '—'}</span>
+                textDecoration: 'none', cursor: a.disabled ? 'not-allowed' : 'pointer',
+                opacity: a.disabled ? 0.5 : 1,
+              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '22px' }}>{a.icon}</span>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700 }}>{a.label}</div>
+                  <div style={{ fontSize: '12px', color: M.textMuted }}>{a.size}</div>
+                </div>
               </div>
+              <div style={{ fontSize: '12px', color: M.textMuted, lineHeight: 1.5 }}>{a.desc}</div>
             </a>
           )
         })}
       </div>
 
-      {/* Install instructions */}
-      <div style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: `1px solid ${M.border}`,
-        borderRadius: '16px',
-        padding: '24px 28px',
-      }}>
-        <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 800, color: M.text }}>
-          Como instalar
-        </h3>
-        <ol style={{ margin: 0, paddingLeft: '22px', color: M.textSub, fontSize: '14px', lineHeight: 1.8 }}>
-          <li>Baixe o instalador correspondente ao seu sistema operacional.</li>
-          <li>Execute o arquivo. O Windows pode mostrar um aviso do SmartScreen — clique em
-            <strong style={{ color: M.text }}> Mais informações</strong> e depois <strong style={{ color: M.text }}>Executar mesmo assim</strong>.</li>
-          <li>Siga o assistente. O instalador cria atalhos no Menu Iniciar e na Área de Trabalho.</li>
-          <li>Abra o launcher e faça login com sua conta Discord (clique em "Abrir site para login").</li>
-          <li>Conecte sua conta Microsoft em Configurações para jogar online.</li>
-        </ol>
+      {/* Requirements + Install */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+        <div style={{ padding: '20px 24px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${M.border}` }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: M.text }}>⚙️ Requisitos</h3>
+          <ul style={{ margin: 0, paddingLeft: '18px', color: M.textSub, fontSize: '13px', lineHeight: 2 }}>
+            <li>Windows 10 / 11 (x64)</li>
+            <li>Conexão com a internet</li>
+            <li>Conta Nimbus (login com Discord)</li>
+            <li>Conta Microsoft (para jogar online)</li>
+          </ul>
+        </div>
+        <div style={{ padding: '20px 24px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${M.border}` }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: M.text }}>🚀 Como instalar</h3>
+          <ol style={{ margin: 0, paddingLeft: '18px', color: M.textSub, fontSize: '13px', lineHeight: 2 }}>
+            <li>Baixe o instalador</li>
+            <li>Execute e siga o assistente</li>
+            <li>Faça login com Discord</li>
+            <li>Conecte sua conta Microsoft</li>
+          </ol>
+        </div>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: '36px', fontSize: '12px', color: M.textMuted }}>
-        Versão atual: 0.2.0 — <a href="https://github.com/tavimxlseven/NimbusLauncher" style={{ color: M.accent, textDecoration: 'none' }}>Código fonte</a>
+      {/* GitHub link */}
+      <div style={{ textAlign: 'center', fontSize: '13px', color: M.textMuted }}>
+        Código aberto no{' '}
+        <a href="https://github.com/tavimxlseven/NimbusLauncher" target="_blank" rel="noreferrer"
+          style={{ color: M.accent, textDecoration: 'none', fontWeight: 600 }}>
+          GitHub
+        </a>
+        {' '}· Versão 0.2.0 · <a href="/changelog" style={{ color: M.accent, textDecoration: 'none', fontWeight: 600 }}>Ver changelog</a>
       </div>
     </div>
   )
@@ -2301,6 +2445,10 @@ const App: React.FC<AppProps> = ({ initialTheme }) => {
               <Download size={17} aria-hidden="true" />
               Download
             </NavLink>
+            <NavLink to="/changelog" style={navLinkStyle} className="nav-link-item">
+              <Clock size={17} aria-hidden="true" />
+              Changelog
+            </NavLink>
           </nav>
 
           {/* Right actions */}
@@ -2349,6 +2497,7 @@ const App: React.FC<AppProps> = ({ initialTheme }) => {
           <Route path="/modpacks" element={<BrowsePage key="modpacks" type="modpacks" user={user} />} />
           <Route path="/library" element={<LibraryPage user={user} />} />
           <Route path="/download" element={<DownloadPage />} />
+          <Route path="/changelog" element={<ChangelogPage />} />
           <Route path="/launcher-connect" element={<LauncherConnectPage user={user} />} />
         </Routes>
       </div>
