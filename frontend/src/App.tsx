@@ -2042,9 +2042,9 @@ interface DownloadAsset {
 }
 
 const DOWNLOAD_ASSETS: DownloadAsset[] = [
-  { os: 'windows', label: 'Windows 10/11 (Instalador)',  url: '/downloads/Nimbus-Launcher-Setup-0.1.3.exe', format: 'installer', size: '~72 MB' },
-  { os: 'windows', label: 'Windows (Portable EXE)',      url: '/downloads/Nimbus-Launcher-Portable-0.1.3.exe', format: 'portable',  size: '~71 MB' },
-  { os: 'windows', label: 'Windows (Portable ZIP)',      url: '/downloads/Nimbus-Launcher-v0.1.3-win-x64.zip', format: 'portable',  size: '~113 MB' },
+  { os: 'windows', label: 'Windows 10/11 (Instalador)',  url: '/downloads/Nimbus-Launcher-Setup-0.2.0.exe', format: 'installer', size: '~72 MB' },
+  { os: 'windows', label: 'Windows (Portable EXE)',      url: '/downloads/Nimbus-Launcher-Portable-0.2.0.exe', format: 'portable',  size: '~71 MB' },
+  { os: 'windows', label: 'Windows (Portable ZIP)',      url: '/downloads/Nimbus-Launcher-v0.2.0-win-x64.zip', format: 'portable',  size: '~113 MB' },
   { os: 'macos',   label: 'macOS (em breve)',            url: '#',                                               format: 'installer', disabled: true },
   { os: 'linux',   label: 'Linux (em breve)',            url: '#',                                               format: 'installer', disabled: true },
 ]
@@ -2177,7 +2177,7 @@ const DownloadPage: React.FC = () => {
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '36px', fontSize: '12px', color: M.textMuted }}>
-        Versão atual: 0.1.3 — <a href="https://github.com/tavimxlseven/NimbusLauncher" style={{ color: M.accent, textDecoration: 'none' }}>Código fonte</a>
+        Versão atual: 0.2.0 — <a href="https://github.com/tavimxlseven/NimbusLauncher" style={{ color: M.accent, textDecoration: 'none' }}>Código fonte</a>
       </div>
     </div>
   )
