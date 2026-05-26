@@ -328,6 +328,84 @@ app.whenReady().then(() => {
     }
   })
 
+  // ── Player profiles (multiple offline/pirate profiles) ────────────────────
+  const PLAYER_PROFILES_FILE = path.join(NIMBUS_DIR, 'player-profiles.json')
+
+  interface PlayerProfile {
+    id: string
+    name: string
+    type: 'offline'
+    skinPath?: string
+    createdAt: string
+  }
+
+  function loadPlayerProfiles(): PlayerProfile[] {
+    try { return JSON.parse(fs.readFileSync(PLAYER_PROFILES_FILE, 'utf-8')) as PlayerProfile[] }
+    catch { return [] }
+  }
+
+  function savePlayerProfiles(profiles: PlayerProfile[]) {
+    ensureDir()
+    fs.writeFileSync(PLAYER_PROFILES_FILE, JSON.stringify(profiles, null, 2), { encoding: 'utf-8', mode: 0o600 })
+  }
+
+  ipcMain.handle('player:listProfiles', () => {
+    return { ok: true, profiles: loadPlayerProfiles() }
+  })
+
+  ipcMain.handle('player:createProfile', (_e, name: string) => {
+    if (!name || !/^[a-zA-Z0-9_]{3,16}$/.test(name)) {
+      return { ok: false, error: 'Nome inválido. Use 3-16 caracteres alfanuméricos ou underscore.' }
+    }
+    const profiles = loadPlayerProfiles()
+    if (profiles.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+      return { ok: false, error: 'Já existe um perfil com esse nome.' }
+    }
+    const profile: PlayerProfile = {
+      id: `offline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      type: 'offline',
+      createdAt: new Date().toISOString(),
+    }
+    profiles.push(profile)
+    savePlayerProfiles(profiles)
+    return { ok: true, profile }
+  })
+
+  ipcMain.handle('player:deleteProfile', (_e, id: string) => {
+    const profiles = loadPlayerProfiles().filter(p => p.id !== id)
+    savePlayerProfiles(profiles)
+    return { ok: true }
+  })
+
+  ipcMain.handle('player:setSkin', async (_e, profileId: string, skinDataBase64: string) => {
+    try {
+      ensureDir()
+      const skinsDir = path.join(NIMBUS_DIR, 'skins')
+      fs.mkdirSync(skinsDir, { recursive: true })
+      const skinPath = path.join(skinsDir, `${profileId}.png`)
+      const buf = Buffer.from(skinDataBase64, 'base64')
+      fs.writeFileSync(skinPath, buf)
+      const profiles = loadPlayerProfiles()
+      const idx = profiles.findIndex(p => p.id === profileId)
+      if (idx >= 0) { profiles[idx]!.skinPath = skinPath; savePlayerProfiles(profiles) }
+      return { ok: true, skinPath }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle('player:getSkin', (_e, profileId: string) => {
+    try {
+      const skinPath = path.join(NIMBUS_DIR, 'skins', `${profileId}.png`)
+      if (!fs.existsSync(skinPath)) return { ok: true, skinData: null }
+      const data = fs.readFileSync(skinPath).toString('base64')
+      return { ok: true, skinData: data }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
   // IPC: game launch + progress
   const gameLauncher = new GameLauncher()
   let currentLogPath: string | null = null

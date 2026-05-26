@@ -41,6 +41,15 @@ const nimbusAPI = {
   instanceDeleteFile: (modpackId: string, folder: string, filename: string) =>
     ipcRenderer.invoke('instance:deleteFile', modpackId, folder, filename),
 
+  // Player profiles (multiple offline/pirate profiles)
+  player: {
+    listProfiles: () => ipcRenderer.invoke('player:listProfiles'),
+    createProfile: (name: string) => ipcRenderer.invoke('player:createProfile', name),
+    deleteProfile: (id: string) => ipcRenderer.invoke('player:deleteProfile', id),
+    setSkin: (profileId: string, skinDataBase64: string) => ipcRenderer.invoke('player:setSkin', profileId, skinDataBase64),
+    getSkin: (profileId: string) => ipcRenderer.invoke('player:getSkin', profileId),
+  },
+
   // Listen for deep link auth token (nimbus://auth?token=XXX)
   onAuthToken: (cb: (token: string) => void) => {
     ipcRenderer.on('deep-link:auth-token', (_e, token: string) => cb(token))

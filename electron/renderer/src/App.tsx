@@ -28,23 +28,29 @@ const BACKEND_URL = import.meta.env.PROD
   ? 'https://nimbusgg.me'
   : (import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3000')
 
-// ── Design tokens (same as website) ──────────────────────────────────────────
+// ── Design tokens — Modrinth-inspired + iOS LiquidGlass ──────────────────────
 
 const M = {
-  bg:       '#080c12',
-  border:   'rgba(255,255,255,0.12)',
-  accent:   '#1bd96a',
-  text:     'rgba(255,255,255,0.97)',
-  textSub:  'rgba(255,255,255,0.65)',
-  textMuted:'rgba(255,255,255,0.38)',
-  red:      '#f85149',
-  orange:   '#e3b341',
-  blue:     '#58a6ff',
-  radius:   '14px',
-  radiusSm: '10px',
-  radiusLg: '18px',
-  sideW:    '240px',
-  titleH:   '40px',
+  bg:        '#0f1117',
+  bgCard:    'rgba(255,255,255,0.04)',
+  bgHover:   'rgba(255,255,255,0.07)',
+  border:    'rgba(255,255,255,0.10)',
+  borderHv:  'rgba(255,255,255,0.18)',
+  accent:    '#1bd96a',
+  accentDim: 'rgba(27,217,106,0.15)',
+  text:      'rgba(255,255,255,0.95)',
+  textSub:   'rgba(255,255,255,0.60)',
+  textMuted: 'rgba(255,255,255,0.35)',
+  red:       '#f85149',
+  orange:    '#e3b341',
+  blue:      '#58a6ff',
+  purple:    '#a78bfa',
+  radius:    '12px',
+  radiusSm:  '8px',
+  radiusLg:  '16px',
+  sideW:     '64px',   // icon-only sidebar like Modrinth
+  titleH:    '40px',
+  glass:     'rgba(15,17,23,0.85)',
 }
 
 // ── Global CSS ────────────────────────────────────────────────────────────────
@@ -61,31 +67,46 @@ const GLOBAL_CSS = `
     overflow: hidden;
     user-select: none;
   }
-  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
-  .nav-btn { transition: background 150ms ease, color 150ms ease; }
-  .nav-btn:hover { background: rgba(255,255,255,0.10) !important; color: ${M.text} !important; }
-  .nav-btn.active { background: rgba(27,217,106,0.15) !important; color: ${M.accent} !important; }
+  /* Sidebar icon buttons */
+  .side-icon { transition: all 150ms ease; border-radius: 10px; }
+  .side-icon:hover { background: rgba(255,255,255,0.09) !important; }
+  .side-icon.active { background: ${M.accentDim} !important; color: ${M.accent} !important; }
 
-  .mp-card { transition: all 160ms ease; cursor: pointer; }
-  .mp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
+  /* Content cards */
+  .content-card { transition: all 160ms ease; cursor: pointer; }
+  .content-card:hover { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.16) !important; }
 
+  /* Play button */
   .play-btn { transition: all 150ms ease; }
-  .play-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(27,217,106,0.5) !important; }
+  .play-btn:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 4px 16px rgba(27,217,106,0.45) !important; }
 
-  .tab-btn { transition: all 150ms ease; }
-  .tab-btn:hover { background: rgba(255,255,255,0.08) !important; }
-  .tab-btn.active { background: rgba(27,217,106,0.15) !important; color: ${M.accent} !important; border-bottom: 2px solid ${M.accent} !important; }
+  /* Tab buttons */
+  .tab-pill { transition: all 150ms ease; }
+  .tab-pill:hover { background: rgba(255,255,255,0.07) !important; }
+  .tab-pill.active { background: ${M.accentDim} !important; color: ${M.accent} !important; }
+
+  /* Category filter chips */
+  .filter-chip { transition: all 120ms ease; cursor: pointer; }
+  .filter-chip:hover { border-color: rgba(255,255,255,0.25) !important; }
+  .filter-chip.active { background: ${M.accentDim} !important; border-color: ${M.accent}66 !important; color: ${M.accent} !important; }
+
+  /* Install button */
+  .install-btn { transition: all 150ms ease; }
+  .install-btn:hover:not(:disabled) { filter: brightness(1.1); }
 
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
   @keyframes pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
 
   /* Drag region for frameless window */
   .titlebar { -webkit-app-region: drag; }
-  .titlebar button { -webkit-app-region: no-drag; }
+  .titlebar button, .titlebar a { -webkit-app-region: no-drag; }
 `
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -131,6 +152,13 @@ declare global {
       instanceListFolder: (modpackId: string, folder: string) => Promise<{ ok: boolean; files: Array<{ name: string; size: number; enabled: boolean }>; error?: string }>
       instanceToggleFile: (modpackId: string, folder: string, filename: string) => Promise<{ ok: boolean; newName?: string; error?: string }>
       instanceDeleteFile: (modpackId: string, folder: string, filename: string) => Promise<{ ok: boolean; error?: string }>
+      player?: {
+        listProfiles(): Promise<{ ok: boolean; profiles: Array<{ id: string; name: string; type: 'offline'; skinPath?: string; createdAt: string }> }>
+        createProfile(name: string): Promise<{ ok: boolean; profile?: { id: string; name: string; type: 'offline'; createdAt: string }; error?: string }>
+        deleteProfile(id: string): Promise<{ ok: boolean }>
+        setSkin(profileId: string, skinDataBase64: string): Promise<{ ok: boolean; skinPath?: string; error?: string }>
+        getSkin(profileId: string): Promise<{ ok: boolean; skinData: string | null; error?: string }>
+      }
       onAuthToken: (cb: (token: string) => void) => () => void
       openDiscordLogin: (backendUrl: string) => Promise<{ success: boolean; user?: unknown }>
       session: {
@@ -312,24 +340,19 @@ const TitleBar: React.FC<TitleBarProps> = ({ user, onLogout }) => (
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { to: '/',        icon: Home,    label: 'Início' },
-  { to: '/library', icon: Library, label: 'Biblioteca' },
-  { to: '/mods',    icon: Package, label: 'Mods' },
-  { to: '/settings',icon: Settings,label: 'Configurações' },
+  { to: '/',         icon: Home,     label: 'Início',        title: 'Início' },
+  { to: '/library',  icon: Library,  label: 'Biblioteca',    title: 'Biblioteca' },
+  { to: '/mods',     icon: Package,  label: 'Conteúdo',      title: 'Mods, Shaders, Texturas' },
+  { to: '/settings', icon: Settings, label: 'Configurações', title: 'Configurações' },
 ]
 
 // ── Microsoft account hook ───────────────────────────────────────────────────
-// Centralised state so Sidebar and SettingsPage stay in sync. Anyone that
-// updates the account dispatches a `nimbus:ms-account-changed` CustomEvent;
-// every consumer listens for it. Lighter than React Context for this single
-// piece of cross-cutting state.
 
 interface MsAccount { username: string; uuid?: string }
 
 function useMicrosoftAccount(): [MsAccount | null, (next: MsAccount | null) => void] {
   const [account, setAccount] = useState<MsAccount | null>(null)
 
-  // Load on mount + refresh when expired.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -342,7 +365,6 @@ function useMicrosoftAccount(): [MsAccount | null, (next: MsAccount | null) => v
         if (cancelled) return
         if (r.success && r.data?.minecraft?.name) {
           setAccount({ username: r.data.minecraft.name, uuid: r.data.minecraft.id })
-          // Quietly refresh in background when expired.
           const expired = !r.data.expiresAt || r.data.expiresAt < Date.now()
           if (expired && r.data.refreshToken) {
             void (async () => {
@@ -363,7 +385,6 @@ function useMicrosoftAccount(): [MsAccount | null, (next: MsAccount | null) => v
     return () => { cancelled = true }
   }, [])
 
-  // Listen for cross-component updates.
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<MsAccount | null>
@@ -373,7 +394,6 @@ function useMicrosoftAccount(): [MsAccount | null, (next: MsAccount | null) => v
     return () => window.removeEventListener('nimbus:ms-account-changed', handler)
   }, [])
 
-  // Setter that broadcasts the change so other components update too.
   const update = useCallback((next: MsAccount | null) => {
     setAccount(next)
     window.dispatchEvent(new CustomEvent('nimbus:ms-account-changed', { detail: next }))
@@ -382,136 +402,73 @@ function useMicrosoftAccount(): [MsAccount | null, (next: MsAccount | null) => v
   return [account, update]
 }
 
+// ── Sidebar — icon-only like Modrinth ────────────────────────────────────────
+
 const Sidebar: React.FC = () => {
   const [msAccount] = useMicrosoftAccount()
   return (
   <aside style={{
     width: M.sideW, flexShrink: 0,
-    position: 'relative',
-    background: 'linear-gradient(180deg, rgba(27,217,106,0.06) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0.025) 100%)',
-    backdropFilter: 'blur(40px) saturate(200%)',
-    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+    background: 'rgba(10,12,18,0.92)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
     borderRight: `1px solid ${M.border}`,
-    boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.04), 1px 0 24px rgba(0,0,0,0.35)',
     display: 'flex', flexDirection: 'column',
-    padding: '18px 12px 12px',
-    overflowY: 'auto',
+    alignItems: 'center',
+    padding: '12px 0',
+    gap: '4px',
   }}>
-    {/* Brand */}
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '11px',
-      padding: '4px 8px 18px',
-      borderBottom: `1px solid ${M.border}`,
-      marginBottom: '14px',
-    }}>
-      <img
-        src={nimbusMark}
-        alt="Nimbus"
-        width={38} height={38}
-        style={{
-          width: 38, height: 38, borderRadius: '12px',
-          objectFit: 'cover',
-          boxShadow: `0 6px 18px ${M.accent}55, inset 0 1px 0 rgba(255,255,255,0.25)`,
-          flexShrink: 0,
-        }}
-      />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: '14px', fontWeight: 800, color: M.text, letterSpacing: '-0.02em' }}>
-          Nimbus
-        </div>
-        <div style={{ fontSize: '11px', color: M.textMuted, fontWeight: 500 }}>
-          Launcher Beta
-        </div>
-      </div>
+    {/* Logo */}
+    <div style={{ marginBottom: '12px', padding: '4px' }}>
+      <img src={nimbusMark} alt="Nimbus" width={36} height={36}
+        style={{ width: 36, height: 36, borderRadius: '10px', objectFit: 'cover',
+          boxShadow: `0 0 16px ${M.accent}44` }} />
     </div>
 
-    {/* Section label */}
-    <div style={{ fontSize: '11px', fontWeight: 700, color: M.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 8px 6px' }}>
-      Navegação
-    </div>
-
-    {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+    {/* Nav icons */}
+    {NAV_ITEMS.map(({ to, icon: Icon, title }) => (
       <NavLink key={to} to={to} end={to === '/'}
-        className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
+        className={({ isActive }) => `side-icon${isActive ? ' active' : ''}`}
+        title={title}
         style={({ isActive }) => ({
-          display: 'flex', alignItems: 'center', gap: '11px',
-          padding: '11px 12px', borderRadius: M.radius,
-          textDecoration: 'none', fontSize: '14px',
-          fontWeight: isActive ? 700 : 500,
-          color: isActive ? M.accent : M.textSub,
-          marginBottom: '3px',
-          border: '1px solid transparent',
-          background: isActive
-            ? 'linear-gradient(135deg, rgba(27,217,106,0.18), rgba(27,217,106,0.08))'
-            : 'transparent',
-          boxShadow: isActive ? `inset 0 0 0 1px rgba(27,217,106,0.30), 0 4px 14px rgba(27,217,106,0.10)` : 'none',
-          transition: 'all 180ms ease',
+          width: 44, height: 44,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: '10px', textDecoration: 'none',
+          color: isActive ? M.accent : M.textMuted,
+          background: isActive ? M.accentDim : 'transparent',
         })}
       >
-        <Icon size={18} />
-        {label}
+        <Icon size={20} />
       </NavLink>
     ))}
 
-    {/* Footer / spacer */}
     <div style={{ flex: 1 }} />
 
-    {/* Microsoft account card — visible when the user has linked an MS account
-        in Settings. Helps surface "logged in as X" without leaving the page. */}
-    {msAccount && (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '10px 10px',
-        borderRadius: M.radius,
-        border: `1px solid ${M.border}`,
-        background: 'rgba(255,255,255,0.04)',
-        marginBottom: '10px',
-      }}>
-        {msAccount.uuid ? (
-          <img
-            src={`https://api.mineatar.io/face/${msAccount.uuid}?scale=4&overlay=true`}
-            alt={msAccount.username}
-            width={32} height={32}
-            style={{
-              width: 32, height: 32, borderRadius: M.radiusSm,
-              imageRendering: 'pixelated' as const,
-              background: 'rgba(255,255,255,0.06)',
-              flexShrink: 0,
-            }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-          />
-        ) : (
-          <div style={{
-            width: 32, height: 32, borderRadius: M.radiusSm,
-            background: 'rgba(255,255,255,0.08)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <span style={{ fontSize: '16px' }}>⛏</span>
-          </div>
-        )}
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: M.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {msAccount.username}
-          </div>
-          <div style={{ fontSize: '10px', color: M.accent, fontWeight: 500 }}>
-            Minecraft
-          </div>
-        </div>
-      </div>
+    {/* Player avatar at bottom */}
+    {msAccount?.uuid ? (
+      <NavLink to="/settings" title={msAccount.username}
+        style={{ textDecoration: 'none', marginBottom: '4px' }}>
+        <img
+          src={`https://api.mineatar.io/face/${msAccount.uuid}?scale=4&overlay=true`}
+          alt={msAccount.username}
+          width={32} height={32}
+          style={{ width: 32, height: 32, borderRadius: '8px', imageRendering: 'pixelated' as const,
+            background: 'rgba(255,255,255,0.06)', display: 'block' }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+        />
+      </NavLink>
+    ) : (
+      <NavLink to="/settings" title="Configurações"
+        className="side-icon"
+        style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: '10px', textDecoration: 'none', color: M.textMuted, marginBottom: '4px' }}>
+        <LogOut size={18} />
+      </NavLink>
     )}
 
-    <div style={{
-      borderTop: `1px solid ${M.border}`,
-      padding: '12px 8px 4px',
-      fontSize: '10px', color: M.textMuted,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    }}>
-      <span style={{ fontWeight: 600 }}>v0.1.0</span>
-      <a href="https://nimbusgg.me" target="_blank" rel="noreferrer"
-        style={{ color: M.textMuted, textDecoration: 'none' }}>
-        nimbusgg.me
-      </a>
+    {/* Version at bottom */}
+    <div style={{ fontSize: '9px', color: M.textMuted, fontWeight: 600, marginTop: '4px', marginBottom: '4px' }}>
+      v0.1.3
     </div>
   </aside>
   )
@@ -2753,6 +2710,135 @@ class SettingsErrorBoundary extends React.Component<
   }
 }
 
+// ── Offline Profiles Section ─────────────────────────────────────────────────
+
+interface OfflineProfile { id: string; name: string; type: 'offline'; skinPath?: string; createdAt: string }
+
+const OfflineProfilesSection: React.FC<{ msAccount: { username: string; uuid?: string } | null }> = ({ msAccount }) => {
+  const [profiles, setProfiles] = useState<OfflineProfile[]>([])
+  const [newName, setNewName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [skinUploadId, setSkinUploadId] = useState<string | null>(null)
+
+  const hasMicrosoft = !!msAccount
+
+  useEffect(() => {
+    if (!hasMicrosoft || !window.nimbus?.player) return
+    window.nimbus.player.listProfiles().then(r => {
+      if (r.ok) setProfiles(r.profiles)
+    }).catch(() => {})
+  }, [hasMicrosoft])
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !window.nimbus?.player) return
+    setCreating(true); setError(null)
+    const r = await window.nimbus.player.createProfile(newName.trim())
+    if (r.ok && r.profile) {
+      setProfiles(prev => [...prev, r.profile as OfflineProfile])
+      setNewName('')
+    } else {
+      setError(r.error ?? 'Erro ao criar perfil')
+    }
+    setCreating(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!window.nimbus?.player) return
+    await window.nimbus.player.deleteProfile(id)
+    setProfiles(prev => prev.filter(p => p.id !== id))
+  }
+
+  const handleSkinUpload = async (profileId: string, file: File) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const base64 = (e.target?.result as string).split(',')[1]
+      if (!base64 || !window.nimbus?.player) return
+      await window.nimbus.player.setSkin(profileId, base64)
+      setSkinUploadId(null)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  if (!hasMicrosoft) {
+    return (
+      <div style={{ marginTop: '24px' }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: 700, color: M.textSub, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Perfis Offline (Pirata)
+        </h3>
+        <div style={{ padding: '16px', borderRadius: M.radius, background: M.bgCard, border: `1px solid ${M.border}`, fontSize: '13px', color: M.textMuted }}>
+          🔒 Vincule uma conta Microsoft para habilitar perfis offline.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: '24px' }}>
+      <h3 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: 700, color: M.textSub, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        Perfis Offline (Pirata)
+      </h3>
+      <div style={{ background: M.bgCard, borderRadius: M.radius, border: `1px solid ${M.border}`, padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <p style={{ margin: 0, fontSize: '12px', color: M.textMuted }}>
+          Perfis offline permitem jogar sem conta Microsoft. Disponível apenas para quem tem conta Microsoft vinculada.
+        </p>
+
+        {/* Create new profile */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            placeholder="Nome do perfil (3-16 chars)"
+            style={{ flex: 1, padding: '9px 12px', borderRadius: M.radiusSm, border: `1px solid ${M.border}`, background: 'rgba(255,255,255,0.06)', color: M.text, fontSize: '13px', fontFamily: 'inherit', outline: 'none' }}
+          />
+          <button onClick={handleCreate} disabled={creating || !newName.trim()}
+            style={{ padding: '9px 16px', borderRadius: M.radiusSm, border: 'none', background: M.accent, color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, fontFamily: 'inherit', opacity: creating || !newName.trim() ? 0.6 : 1 }}>
+            {creating ? '...' : '+ Criar'}
+          </button>
+        </div>
+        {error && <p style={{ margin: 0, fontSize: '12px', color: M.red }}>{error}</p>}
+
+        {/* Profile list */}
+        {profiles.length === 0 ? (
+          <p style={{ margin: 0, fontSize: '13px', color: M.textMuted, textAlign: 'center', padding: '12px' }}>
+            Nenhum perfil offline criado.
+          </p>
+        ) : (
+          profiles.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: M.radiusSm, background: 'rgba(255,255,255,0.04)', border: `1px solid ${M.border}` }}>
+              {/* Skin preview */}
+              <div style={{ width: 36, height: 36, borderRadius: '8px', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', cursor: 'pointer' }}
+                onClick={() => setSkinUploadId(skinUploadId === p.id ? null : p.id)}
+                title="Clique para trocar skin">
+                <span style={{ fontSize: '20px' }}>⛏</span>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: M.text }}>{p.name}</div>
+                <div style={{ fontSize: '11px', color: M.textMuted }}>Offline · UUID gerado automaticamente</div>
+              </div>
+              {/* Skin upload */}
+              {skinUploadId === p.id && (
+                <label style={{ padding: '5px 10px', borderRadius: M.radiusSm, border: `1px solid ${M.border}`, background: 'rgba(255,255,255,0.06)', color: M.textSub, cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}>
+                  📁 Skin (.png)
+                  <input type="file" accept=".png" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleSkinUpload(p.id, f) }} />
+                </label>
+              )}
+              <button onClick={() => handleDelete(p.id)}
+                style={{ width: 28, height: 28, borderRadius: M.radiusSm, border: '1px solid transparent', background: 'transparent', color: M.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,81,73,0.15)'; e.currentTarget.style.color = M.red }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = M.textMuted }}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 const SettingsPageInner: React.FC = () => {
   const [msAccount, setMsAccount] = useMicrosoftAccount()
   const [msLoading, setMsLoading] = useState(false)
@@ -3329,6 +3415,9 @@ const SettingsPageInner: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── Offline / Pirate Profiles ─────────────────────────────────────── */}
+      <OfflineProfilesSection msAccount={msAccount} />
     </div>
   )
 }
